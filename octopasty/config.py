@@ -22,17 +22,21 @@ from ConfigParser import ConfigParser
 
 def read_config(filename):
     _config = dict()
-    _config['servers'] = dict()
+    _config['amis'] = dict()
     config = ConfigParser()
     config.read(filename)
-    assert config.has_section("servers"), \
-           "No servers section in the config file"
-    _servers = config.items('servers')
-    assert len(_servers) > 0, "No server configured"
-    for key, parameters in _servers:
+    assert config.has_section("amis"), \
+           "No 'amis' section in the config file"
+    _amis = config.items('amis')
+    assert len(_amis) > 0, "No AMIs configured"
+    for key, parameters in _amis:
         left, right = parameters.split('@')
         user, password = left.split(':')
         host, port = right.split(':')
-        _config['servers'][key] = dict(user=user, password=password,
+        _config['amis'][key] = dict(user=user, password=password,
                                        host=host, port=port)
+    assert config.has_section("server"), \
+           "No 'server' section in the config file"
+    _config['bind_address'] = config.get('server', 'address')
+    _config['bind_port'] = config.get('server', 'port')
     return _config

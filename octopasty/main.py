@@ -17,13 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import socket
+
 from time import sleep
-from threading import Thread
 from datetime import datetime, timedelta
 from select import select
 
 from amiclient import AMIClient
+from server import MainListener
 
 __version__ = 'Octopasty 0.1'
 
@@ -33,11 +33,12 @@ _1S = timedelta(0, 1)
 class Octopasty(object):
 
     def __init__(self, config):
-        self.servers = config.get('servers')
+        self.servers = config.get('amis')
         self.clients = set()
         self.connect_tentatives = dict()
         self.amis = set()
-        self.clients = []
+        self.config = config
+        self.clients = set()
 
     # AMI side
     def connect_server(self, server):
@@ -68,10 +69,11 @@ class Octopasty(object):
 
     # Client side
     def listen_clients(self):
-        pass
+        self.listener = MainListener(self)
 
     def _get_connected_clients(self):
-        return []
+        return [client.id for client in \
+                filter(lambda _client: _client.connected, self.clients)]
     connected_clients = property(_get_connected_clients)
 
     def _get_client_files(self):
@@ -79,16 +81,16 @@ class Octopasty(object):
                 filter(lambda _client: _client.connected, self.clients)]
     client_files = property(_get_client_files)
 
-    def find_client_from_file(self, file_):
-        for ami in self.amis:
-            if ami.file == file_:
-                return ami
+    def find_peer_from_file(self, file_):
+        for peer in list(self.clients) + list(self.amis):
+            if peer.file == file_:
+                return peer
         return None
 
     def loop(self):
+        self.listen_clients()
         while True:
             self.connect_servers()
-            self.listen_clients()
             # don't eat the CPU for nothing
             if len(self.connected_servers) == 0 and \
                len(self.connected_clients) == 0:
@@ -97,8 +99,7 @@ class Octopasty(object):
             # the big select (all blocking is here)
             reading = self.ami_files + self.client_files
             if len(reading) > 0:
-                toread, _, _ = select(reading, [], [])
-                for f in toread:
-                    ami = self.find_client_from_file(f)
-                    if ami:
-                        ami.handle_line()
+                to_read, _, _ = select(reading, [], [], 1)
+                for f in to_read:
+                    peer = self.find_peer_from_file(f)
+                    peer.handle_line()
