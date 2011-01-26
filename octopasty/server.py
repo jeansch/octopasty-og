@@ -32,9 +32,16 @@ class ServerThread(Thread):
         self.details = details
         self.id = int(mktime(datetime.now().timetuple()))
 
+    def set_disconnected(self):
+        if self.channel:
+            self.channel.close()
+            self.channel = None
+        if self in self.octopasty.clients:
+            self.octopasty.clients.remove(self)
+        self.connected = False
+        self.file = None
+
     def run(self):
-        print "Connected: %s %s" % (self.channel,
-                                    self.details)
         self.file = self.channel.makefile()
         self.connected = True
 
