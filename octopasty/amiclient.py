@@ -19,6 +19,8 @@
 
 import socket
 from threading import Thread
+from asterisk import Login
+from asterisk import Event, Response
 
 
 class AMIClient(Thread):
@@ -33,6 +35,8 @@ class AMIClient(Thread):
         self.password = parameters.get('password')
         self.connected = False
         self.file = None
+        self.response = None
+        self.event = None
 
     def set_disconnected(self):
         if self.socket:
@@ -42,6 +46,11 @@ class AMIClient(Thread):
             self.octopasty.amis.remove(self)
         self.connected = False
         self.file = None
+
+    def login(self):
+        self.file.write(Login(self.user,
+                              self.password))
+        self.file.flush()
 
     def run(self):
         try:
@@ -60,4 +69,34 @@ class AMIClient(Thread):
         if len(line) == 0:
             self.set_disconnected()
         else:
-            print "[%s] => %s" % (self.server, line.strip())
+            line = line.strip()
+            print line
+            if line.startswith('Asterisk Call Manager'):
+                self.login()
+            if line.startswith('Response:'):
+                self.response = Response(line.replace('Response: ', ''))
+                self.event = None
+            elif line.startswith('Event:'):
+                self.event = Event(line.replace('Event: ', ''))
+                self.response = None
+            elif line == '':
+                if self.response:
+                    self.push(self.response)
+                    self.response = None
+                elif self.event:
+                    self.push(self.event)
+                    self.event = None
+            else:
+                if ':' in line:
+                    k = line.split(':')[0]
+                    v = ':'.join(line.split(':')[1:]).lstrip()
+                if self.response:
+                    self.response.add_parameters({k: v})
+                if self.event:
+                    self.event.add_parameters({k: v})
+
+    def push(self, packet):
+        print "Sending packet %s from %s: %s" % (packet._name_, self.server,
+                                                 packet)
+        self.octopasty.ami_queue.put(dict(server=self.server,
+                                          packet=packet))

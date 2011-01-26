@@ -24,6 +24,7 @@ from select import select
 
 from amiclient import AMIClient
 from server import MainListener
+from Queue import Queue
 
 __version__ = 'Octopasty 0.1'
 
@@ -39,6 +40,7 @@ class Octopasty(object):
         self.amis = set()
         self.config = config
         self.clients = set()
+        self.ami_queue = Queue()
 
     # AMI side
     def connect_server(self, server):
@@ -87,19 +89,27 @@ class Octopasty(object):
                 return peer
         return None
 
+    def idle(self):
+        if len(self.connected_servers) == 0 and \
+               len(self.connected_clients) == 0:
+            sleep(1)
+
+    def readall(self):
+        reading = self.ami_files + self.client_files
+        if len(reading) > 0:
+            to_read, _, _ = select(reading, [], [], 1)
+            for f in to_read:
+                peer = self.find_peer_from_file(f)
+                peer.handle_line()
+
     def loop(self):
         self.listen_clients()
         while True:
             self.connect_servers()
-            # don't eat the CPU for nothing
-            if len(self.connected_servers) == 0 and \
-               len(self.connected_clients) == 0:
-                print "nothing connected, waiting..."
-                sleep(1)
+            self.idle()
+            self.readall()
             # the big select (all blocking is here)
-            reading = self.ami_files + self.client_files
-            if len(reading) > 0:
-                to_read, _, _ = select(reading, [], [], 1)
-                for f in to_read:
-                    peer = self.find_peer_from_file(f)
-                    peer.handle_line()
+            # read the lines
+            #while not self.ami_queue.empty():
+            #    e = q.get()
+
