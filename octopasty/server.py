@@ -34,6 +34,7 @@ class ServerThread(Thread):
         self.action = None
         self.logged = False
         self.id = 'unknown%d' % int(mktime(datetime.now().timetuple()))
+        self.locked = False
 
     def set_disconnected(self):
         if self.channel:
@@ -70,7 +71,9 @@ class ServerThread(Thread):
                     self.action.add_parameters({k: v})
 
     def push(self, packet):
-        self.octopasty.in_queue.put(dict(emiter=self.id, packet=packet,
+        self.octopasty.in_queue.put(dict(emiter=self.id,
+                                         timestamp=datetime.now(),
+                                         packet=packet,
                                          side='client'))
 
 

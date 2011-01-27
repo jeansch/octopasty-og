@@ -107,6 +107,10 @@ class Octopasty(object):
     def sendall(self):
         pass
 
+    def burials(self):
+        # Unlock AMI with old locks
+        pass
+
     def loop(self):
         self.listen_clients()
         while True:
@@ -116,5 +120,6 @@ class Octopasty(object):
             if not self.in_queue.empty:
                 # Thanks to Derek for the awesome function name !
                 squirm(self)
+            self.burials()
             if not self.out_queue.empty:
                 self.sendall()

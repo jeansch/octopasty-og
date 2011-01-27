@@ -18,7 +18,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import socket
+from datetime import datetime
 from threading import Thread
+
 from asterisk import Login
 from asterisk import Event, Response
 
@@ -38,6 +40,7 @@ class AMIClient(Thread):
         self.response = None
         self.event = None
         self.logged = False
+        self.locked = False
 
     def set_disconnected(self):
         if self.socket:
@@ -96,5 +99,6 @@ class AMIClient(Thread):
 
     def push(self, packet):
         self.octopasty.in_queue.put(dict(emiter=self.server,
+                                         timestamp=datetime.now(),
                                          packet=packet,
                                          side='ami'))
