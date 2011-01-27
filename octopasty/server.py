@@ -20,7 +20,8 @@
 import socket
 from threading import Thread
 from datetime import datetime
-from time import mktime
+from time import mktime, sleep
+from asterisk import Action
 
 
 class ServerThread(Thread):
@@ -30,7 +31,9 @@ class ServerThread(Thread):
         self.octopasty = octopasty
         self.channel = channel
         self.details = details
-        self.id = int(mktime(datetime.now().timetuple()))
+        self.action = None
+        self.logged = False
+        self.id = 'unknown%d' % int(mktime(datetime.now().timetuple()))
 
     def set_disconnected(self):
         if self.channel:
@@ -44,13 +47,31 @@ class ServerThread(Thread):
     def run(self):
         self.file = self.channel.makefile()
         self.connected = True
+        self.file.write("Asterisk Call Manager/1.1\n")
+        self.file.flush()
 
     def handle_line(self):
         line = self.file.readline()
         if len(line) == 0:
             self.set_disconnected()
         else:
-            print "[%s] <= %s" % (self.id, line.strip())
+            line = line.strip()
+            if line.startswith('Action:'):
+                self.action = Action(line.replace('Action: ', ''))
+            elif line == '':
+                if self.action:
+                    self.push(self.action)
+                    self.action = None
+            else:
+                if ':' in line:
+                    k = line.split(':')[0]
+                    v = ':'.join(line.split(':')[1:]).lstrip()
+                if self.action:
+                    self.action.add_parameters({k: v})
+
+    def push(self, packet):
+        self.octopasty.in_queue.put(dict(emiter=self.id, packet=packet,
+                                         side='client'))
 
 
 class MainListener(Thread):
@@ -61,15 +82,21 @@ class MainListener(Thread):
         self.start()
 
     def run(self):
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind((self.octopasty.config.get('bind_address'),
-                     int(self.octopasty.config.get('bind_port'))))
-        print "Listening on %s %s" % \
-              (self.octopasty.config.get('bind_address'),
-               self.octopasty.config.get('bind_port'))
-        server.listen(5)
         while True:
-            channel, details = server.accept()
-            st = ServerThread(self.octopasty, channel, details)
-            st.start()
-            self.octopasty.clients.add(st)
+            try:
+                server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                print "Try to bind on %s %s" % \
+                      (self.octopasty.config.get('bind_address'),
+                       self.octopasty.config.get('bind_port'))
+                server.bind((self.octopasty.config.get('bind_address'),
+                             int(self.octopasty.config.get('bind_port'))))
+                print "Listening"
+                server.listen(5)
+                while True:
+                    channel, details = server.accept()
+                    st = ServerThread(self.octopasty, channel, details)
+                    st.start()
+                    self.octopasty.clients.add(st)
+            except socket.error, e:
+                print e
+                sleep(10)

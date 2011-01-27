@@ -61,3 +61,7 @@ class Event(Answer):
 
 class Response(Answer):
     _name_ = 'Response'
+
+
+class Action(Answer):
+    _name_ = 'Action'

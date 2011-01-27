@@ -21,10 +21,11 @@
 from time import sleep
 from datetime import datetime, timedelta
 from select import select
+from Queue import Queue
 
 from amiclient import AMIClient
 from server import MainListener
-from Queue import Queue
+from squirm import squirm
 
 __version__ = 'Octopasty 0.1'
 
@@ -40,7 +41,8 @@ class Octopasty(object):
         self.amis = set()
         self.config = config
         self.clients = set()
-        self.ami_queue = Queue()
+        self.in_queue = Queue()
+        self.out_queue = Queue()
 
     # AMI side
     def connect_server(self, server):
@@ -102,14 +104,17 @@ class Octopasty(object):
                 peer = self.find_peer_from_file(f)
                 peer.handle_line()
 
+    def sendall(self):
+        pass
+
     def loop(self):
         self.listen_clients()
         while True:
             self.connect_servers()
             self.idle()
             self.readall()
-            # the big select (all blocking is here)
-            # read the lines
-            #while not self.ami_queue.empty():
-            #    e = q.get()
-
+            if not self.in_queue.empty:
+                # Thanks to Derek for the awesome function name !
+                squirm(self)
+            if not self.out_queue.empty:
+                self.sendall()

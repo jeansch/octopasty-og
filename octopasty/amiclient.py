@@ -37,6 +37,7 @@ class AMIClient(Thread):
         self.file = None
         self.response = None
         self.event = None
+        self.logged = False
 
     def set_disconnected(self):
         if self.socket:
@@ -61,7 +62,6 @@ class AMIClient(Thread):
             self.connected = True
             self.file = self.socket.makefile()
         except socket.error:
-            # May be log something one day
             pass
 
     def handle_line(self):
@@ -70,7 +70,6 @@ class AMIClient(Thread):
             self.set_disconnected()
         else:
             line = line.strip()
-            print line
             if line.startswith('Asterisk Call Manager'):
                 self.login()
             if line.startswith('Response:'):
@@ -96,7 +95,6 @@ class AMIClient(Thread):
                     self.event.add_parameters({k: v})
 
     def push(self, packet):
-        print "Sending packet %s from %s: %s" % (packet._name_, self.server,
-                                                 packet)
-        self.octopasty.ami_queue.put(dict(server=self.server,
-                                          packet=packet))
+        self.octopasty.in_queue.put(dict(emiter=self.server,
+                                         packet=packet,
+                                         side='ami'))

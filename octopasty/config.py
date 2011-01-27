@@ -20,23 +20,57 @@
 from ConfigParser import ConfigParser
 
 
-def read_config(filename):
-    _config = dict()
-    _config['amis'] = dict()
-    config = ConfigParser()
-    config.read(filename)
+def get_amis(config):
+    ret = dict()
+    ret['amis'] = dict()
     assert config.has_section("amis"), \
            "No 'amis' section in the config file"
-    _amis = config.items('amis')
-    assert len(_amis) > 0, "No AMIs configured"
-    for key, parameters in _amis:
+    amis = config.items('amis')
+    assert len(amis) > 0, "No AMIs configured"
+    for key, parameters in amis:
         left, right = parameters.split('@')
         user, password = left.split(':')
         host, port = right.split(':')
-        _config['amis'][key] = dict(user=user, password=password,
-                                       host=host, port=port)
+        ret['amis'][key] = dict(user=user, password=password,
+                                host=host, port=port)
+    return ret
+
+
+def get_server(config):
+    ret = dict()
     assert config.has_section("server"), \
            "No 'server' section in the config file"
-    _config['bind_address'] = config.get('server', 'address')
-    _config['bind_port'] = config.get('server', 'port')
-    return _config
+    ret['bind_address'] = config.get('server', 'address')
+    ret['bind_port'] = config.get('server', 'port')
+    return ret
+
+
+def get_users(config):
+    ret = dict()
+    ret['users'] = dict()
+    assert config.has_section("users"), \
+           "No 'users' section in the config file"
+    users = config.items('users')
+    assert len(users) > 0, "No AMIs configured"
+    for key, parameters in users:
+        parameters = parameters.replace(' ', '')
+        if '@' in parameters:
+            password, _servers = parameters.split('@')
+            servers = _servers.split(',')
+        else:
+            password = parameters
+            servers = 'ALL'
+        user = key
+        ret['users'][user] = dict(password=password,
+                                servers=[servers])
+    return ret
+
+
+def read_config(filename):
+    config = dict()
+    parser = ConfigParser()
+    parser.read(filename)
+    config.update(get_amis(parser))
+    config.update(get_server(parser))
+    config.update(get_users(parser))
+    return config
