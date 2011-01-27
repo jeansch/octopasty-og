@@ -34,7 +34,7 @@ class ServerThread(Thread):
         self.action = None
         self.logged = False
         self.id = 'unknown%d' % int(mktime(datetime.now().timetuple()))
-        self.locked = False
+        self.locked = 0
         self.wants_events = False
 
     def set_disconnected(self):

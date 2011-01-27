@@ -21,6 +21,7 @@
 from time import sleep
 from datetime import datetime, timedelta
 from select import select
+from time import time
 from Queue import Queue
 
 from amiclient import AMIClient
@@ -30,6 +31,7 @@ from squirm import squirm
 __version__ = 'Octopasty 0.1'
 
 _1S = timedelta(0, 1)
+_10S = timedelta(0, 10)
 
 
 class Octopasty(object):
@@ -108,8 +110,14 @@ class Octopasty(object):
         pass
 
     def burials(self):
+        died = time() - 10
         # Unlock AMI with old locks
-        pass
+        for ami in self.amis:
+            if ami.locked < died:
+                ami.locked = 0
+        for client in self.clients:
+            if client.locked < died:
+                client.locked = 0
 
     def loop(self):
         self.listen_clients()
