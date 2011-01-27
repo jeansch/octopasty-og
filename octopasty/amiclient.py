@@ -20,6 +20,7 @@
 import socket
 from datetime import datetime
 from threading import Thread
+from time import time
 
 from asterisk import Login
 from asterisk import Event, Response
@@ -51,10 +52,14 @@ class AMIClient(Thread):
         self.connected = False
         self.file = None
 
+    def act(self, action):
+        if not self.locked:
+            self.file.write(action)
+            self.flush()
+            self.locked = time()
+
     def login(self):
-        self.file.write(Login(self.user,
-                              self.password))
-        self.file.flush()
+        self.act(Login(self.user, self.password))
 
     def run(self):
         try:
@@ -75,7 +80,8 @@ class AMIClient(Thread):
             line = line.strip()
             if line.startswith('Asterisk Call Manager'):
                 self.login()
-            if line.startswith('Response:'):
+                return
+            if self.locked and line.startswith('Response:'):
                 self.response = Response(line.replace('Response: ', ''))
                 self.event = None
             elif line.startswith('Event:'):
@@ -99,6 +105,7 @@ class AMIClient(Thread):
 
     def push(self, packet):
         self.octopasty.in_queue.put(dict(emiter=self.server,
+                                         locked=self.locked,
                                          timestamp=datetime.now(),
                                          packet=packet,
                                          side='ami'))
