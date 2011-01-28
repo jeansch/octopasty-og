@@ -41,6 +41,7 @@ class ServerThread(Thread):
         self.binded_server = None
 
     def set_disconnected(self):
+        # TODO: remove the logged and any other meaning full status
         if self.channel:
             self.channel.close()
             self.channel = None

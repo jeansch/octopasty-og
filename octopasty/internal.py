@@ -29,8 +29,9 @@ def handle_packet(self, packet):
     # P: Action: login\nUsername: plop\n
     #    Secret: 64faf5d0b1dc311fd0f94af64f6c296a03045571\nEvents: on\n\n
     #
-    # TODO: set binded_server, set logged, replace the 'unknowXXXXX' id
-    # check if it wants the events
+    # TODO: set binded_server, set logged,
+    #       replace the 'unknowXXXXX' id (beware of multiple cx)
+    #       check if it wants the events
 
     # from AMI:
     # E: vgw6
