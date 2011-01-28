@@ -21,6 +21,7 @@ import socket
 from datetime import datetime
 from threading import Thread
 from time import time
+from utils import Packet
 
 from asterisk import Login
 from asterisk import Event, Response
@@ -47,26 +48,30 @@ class AMIClient(Thread):
         if self.socket:
             self.socket.close()
             self.socket = None
-        if self in self.octopasty.amis:
-            self.octopasty.amis.remove(self)
+        if self.server in self.octopasty.amis:
+            self.octopasty.amis.pop(self.server)
         self.connected = False
         self.file = None
 
-    def act(self, action):
+    def send(self, packet):
         if not self.locked:
-            self.file.write(action)
+            self.file.write(packet.packet)
             self.flush()
             self.locked = time()
+            return self.locked
+        else:
+            return None
 
     def login(self):
-        self.act(Login(self.user, self.password))
+        self.push(Login(self.user, self.password),
+                  emiter='__internal__')
 
     def run(self):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((self.host, int(self.port)))
             self.socket = s
-            self.octopasty.amis.add(self)
+            self.octopasty.amis.update({self.server: self})
             self.connected = True
             self.file = self.socket.makefile()
         except socket.error:
@@ -103,9 +108,14 @@ class AMIClient(Thread):
                 if self.event:
                     self.event.add_parameters({k: v})
 
-    def push(self, packet):
-        self.octopasty.in_queue.put(dict(emiter=self.server,
-                                         locked=self.locked,
-                                         timestamp=datetime.now(),
-                                         packet=packet,
-                                         side='ami'))
+    def push(self, packet, emiter=None, dest=None):
+        p = dict(emiter=emiter or self.server,
+                 locked=self.locked, timestamp=datetime.now(),
+                 packet=packet, side='ami')
+        if dest:
+            p['dest'] = dest
+        self.octopasty.in_queue.put(Packet(p))
+
+    def _get_available(self):
+        return self.connected and not self.locked
+    available = property(_get_available)

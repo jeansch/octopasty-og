@@ -20,15 +20,12 @@
 
 from time import sleep
 from datetime import datetime, timedelta
-from select import select
-from time import time
 from Queue import Queue
 
 from amiclient import AMIClient
 from server import MainListener
-from squirm import squirm
-
-__version__ = 'Octopasty 0.1'
+from squirm import readall, squirm, burials, sendall
+from config import read_config
 
 _1S = timedelta(0, 1)
 _10S = timedelta(0, 10)
@@ -36,15 +33,16 @@ _10S = timedelta(0, 10)
 
 class Octopasty(object):
 
-    def __init__(self, config):
-        self.servers = config.get('amis')
+    def __init__(self, config_filename):
+        self.config = read_config(config_filename)
+        self.servers = self.config.get('amis')
         self.clients = set()
         self.connect_tentatives = dict()
-        self.amis = set()
-        self.config = config
+        self.amis = dict()
         self.clients = set()
         self.in_queue = Queue()
         self.out_queue = Queue()
+        self.flow = dict()
 
     # AMI side
     def connect_server(self, server):
@@ -65,12 +63,12 @@ class Octopasty(object):
 
     def _get_connected_servers(self):
         return [ami.server for ami in \
-                filter(lambda _ami: _ami.connected, self.amis)]
+                filter(lambda _ami: _ami.connected, self.amis.values())]
     connected_servers = property(_get_connected_servers)
 
     def _get_ami_files(self):
         return [ami.file for ami in \
-                filter(lambda _ami: _ami.connected, self.amis)]
+                filter(lambda _ami: _ami.connected, self.amis.values())]
     ami_files = property(_get_ami_files)
 
     # Client side
@@ -79,55 +77,40 @@ class Octopasty(object):
 
     def _get_connected_clients(self):
         return [client.id for client in \
-                filter(lambda _client: _client.connected, self.clients)]
+                filter(lambda _client: _client.connected,
+                       self.clients.values())]
     connected_clients = property(_get_connected_clients)
 
     def _get_client_files(self):
         return [client.file for client in \
-                filter(lambda _client: _client.connected, self.clients)]
+                filter(lambda _client: _client.connected,
+                       self.clients.values())]
     client_files = property(_get_client_files)
 
+    def _get_peers(self):
+        return list(self.clients.values()) + list(self.amis.values())
+    peers = property(_get_peers)
+
     def find_peer_from_file(self, file_):
-        for peer in list(self.clients) + list(self.amis):
+        for peer in self.peers:
             if peer.file == file_:
                 return peer
         return None
+
+    def get_peer(self, name):
+        return self.amis.get(name) or self.clients.get(name) or None
 
     def idle(self):
         if len(self.connected_servers) == 0 and \
                len(self.connected_clients) == 0:
             sleep(1)
 
-    def readall(self):
-        reading = self.ami_files + self.client_files
-        if len(reading) > 0:
-            to_read, _, _ = select(reading, [], [], 1)
-            for f in to_read:
-                peer = self.find_peer_from_file(f)
-                peer.handle_line()
-
-    def sendall(self):
-        pass
-
-    def burials(self):
-        died = time() - 10
-        # Unlock AMI with old locks
-        for ami in self.amis:
-            if ami.locked < died:
-                ami.locked = 0
-        for client in self.clients:
-            if client.locked < died:
-                client.locked = 0
-
     def loop(self):
         self.listen_clients()
         while True:
             self.connect_servers()
             self.idle()
-            self.readall()
-            if not self.in_queue.empty:
-                # Thanks to Derek for the awesome function name !
-                squirm(self)
-            self.burials()
-            if not self.out_queue.empty:
-                self.sendall()
+            readall(self)
+            squirm(self)
+            burials(self)
+            sendall(self)

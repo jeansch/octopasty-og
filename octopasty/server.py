@@ -41,8 +41,8 @@ class ServerThread(Thread):
         if self.channel:
             self.channel.close()
             self.channel = None
-        if self in self.octopasty.clients:
-            self.octopasty.clients.remove(self)
+        if self.id in self.octopasty.clients:
+            self.octopasty.clients.pop(self.id)
         self.connected = False
         self.file = None
 
@@ -51,6 +51,29 @@ class ServerThread(Thread):
         self.connected = True
         self.file.write("Asterisk Call Manager/1.1\n")
         self.file.flush()
+        self.octopasty.clients.update({self.id: self})
+
+    def send(self, packet):
+        released_lock = None
+        if self.locked:
+            if packet.locked == self.locked:
+                # it's for me
+                self.file.write(packet.packet)
+                self.flush()
+                released_lock = self.locked
+                self.locked = 0
+            else:
+                # just discard, may be too old
+                pass
+        else:
+            # on let events go
+            if not packet.locked:
+                self.file.write(packet.packet)
+                self.flush()
+            else:
+                # humm, why we get that ??
+                pass
+        return released_lock
 
     def handle_line(self):
         line = self.file.readline()
@@ -58,7 +81,8 @@ class ServerThread(Thread):
             self.set_disconnected()
         else:
             line = line.strip()
-            if line.startswith('Action:'):
+            # if locked, we are waiting for a result
+            if not self.locked and line.startswith('Action:'):
                 self.action = Action(line.replace('Action: ', ''))
             elif line == '':
                 if self.action:
@@ -101,7 +125,6 @@ class MainListener(Thread):
                     channel, details = server.accept()
                     st = ServerThread(self.octopasty, channel, details)
                     st.start()
-                    self.octopasty.clients.add(st)
             except socket.error, e:
                 print e
                 sleep(10)
