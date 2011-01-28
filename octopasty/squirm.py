@@ -34,7 +34,9 @@ def readall(self):
 
 
 def sendall(self):
-    if not self.out_queue.empty:
+    if len(list(self.out_queue.queue)):
+        print "OUT: %s" % list(self.out_queue.queue)
+    if not self.out_queue.empty():
         outgoing = list(self.out_queue.queue)
         self.out_queue.queue.clear()
         for packet in outgoing:
@@ -46,31 +48,37 @@ def sendall(self):
                 if sent:
                     if sent in self.flow:
                         # then it was an answer
-                        self.flow.pop(sent)
+                        self.flow.pop("%s" % sent)
                     else:
                         # then it was a query
-                        self.flow[sent] = packet.emiter
+                        self.flow["%s" % sent] = packet.emiter
                 else:
                     # They it was an event
                     pass
 
 
 def burials(self):
-    apocalypse = time() - 10
+    apocalypse = int((time() - 10) * 10000000)
     # Remove old locks
     for peer in self.peers:
         if peer and peer.logged and peer.locked < apocalypse:
             peer.locked = 0
-    # TODO: Remove the old packets
 
 
 # The nervous central
 # Thanks to Derek for the awesome function name !
 def squirm(self):
-    if not self.in_queue.empty:
+    apocalypse = time() - 10
+    if len(list(self.in_queue.queue)):
+        print "IN: %s" % list(self.in_queue.queue)
+    if not self.in_queue.empty():
         incoming = list(self.in_queue.queue)
         self.in_queue.queue.clear()
         for packet in incoming:
+            if packet.timestamp < apocalypse:
+                # not puting in the queue and just continuing
+                # makes the packet go nowhere
+                continue
             if packet.emiter == '__internal__':
                 peer = self.get_peer(packet.dest)
                 if peer and peer.available:
@@ -80,14 +88,17 @@ def squirm(self):
             else:
                 if packet.locked:
                     emiter = self.get_peer(packet.emiter)
-                    dest = self.flow.get(emiter.locked)
-                    peer = self.get_peer(dest)
                     emiter.locked = 0
-                    if peer and peer.available:
-                        packet.dest = dest
-                        self.out_queue.put(packet)
+                    dest = self.flow.get("%s" % packet.locked)
+                    if dest == '__internal__':
+                        handle_packet(self, packet)
                     else:
-                        self.in_queue.put(packet)
+                        peer = self.get_peer(dest)
+                        if peer and peer.available:
+                            packet.dest = dest
+                            self.out_queue.put(packet)
+                        else:
+                            self.in_queue.put(packet)
                 else:
                     if packet.emiter in self.connected_servers:
                         ami = self.get_peer(packet.emiter)

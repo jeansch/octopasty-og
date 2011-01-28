@@ -36,10 +36,9 @@ class Octopasty(object):
     def __init__(self, config_filename):
         self.config = read_config(config_filename)
         self.servers = self.config.get('amis')
-        self.clients = set()
         self.connect_tentatives = dict()
         self.amis = dict()
-        self.clients = set()
+        self.clients = dict()
         self.in_queue = Queue()
         self.out_queue = Queue()
         self.flow = dict()

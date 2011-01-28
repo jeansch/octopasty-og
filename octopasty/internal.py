@@ -19,6 +19,19 @@
 
 
 def handle_packet(self, packet):
-    # for now, only login request should arrive here
-    # TODO: Handle that
+    # TODO: Handle login
+
+    # from client:
+    # E: unknown1296257108,
+    # T: 1296257114.41,
+    # L: 0,
+    # D: __internal__,
+    # P: Action: login\nUsername: plop\n
+    #    Secret: 64faf5d0b1dc311fd0f94af64f6c296a03045571\nEvents: on\n\n
+
+    # from AMI:
+    # E: vgw6
+    # T: 1296257138.24
+    # L: 12962570451093290
+    # P: Action: Success\nMessage: Authentication accepted\n\n
     pass

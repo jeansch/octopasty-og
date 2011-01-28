@@ -18,7 +18,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import socket
-from datetime import datetime
 from threading import Thread
 from time import time
 from utils import Packet
@@ -56,15 +55,15 @@ class AMIClient(Thread):
     def send(self, packet):
         if not self.locked:
             self.file.write(packet.packet)
-            self.flush()
-            self.locked = time()
+            self.file.flush()
+            self.locked = int(time() * 10000000)
             return self.locked
         else:
             return None
 
     def login(self):
         self.push(Login(self.user, self.password),
-                  emiter='__internal__')
+                  emiter='__internal__', dest=self.server)
 
     def run(self):
         try:
@@ -110,8 +109,8 @@ class AMIClient(Thread):
 
     def push(self, packet, emiter=None, dest=None):
         p = dict(emiter=emiter or self.server,
-                 locked=self.locked, timestamp=datetime.now(),
-                 packet=packet, side='ami')
+                 locked=self.locked, timestamp=time(),
+                 packet=packet)
         if dest:
             p['dest'] = dest
         self.octopasty.in_queue.put(Packet(p))
@@ -119,3 +118,7 @@ class AMIClient(Thread):
     def _get_available(self):
         return self.connected and not self.locked
     available = property(_get_available)
+
+    def _get_uid(self):
+        return self.server
+    uid = property(_get_uid)

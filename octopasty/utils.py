@@ -19,5 +19,17 @@
 
 
 class Packet:
-    def __init__(self, **entries):
+    def __init__(self, entries):
         self.__dict__.update(entries)
+
+    def __repr__(self):
+        ret = ""
+        ret += "E: %s, " % self.emiter
+        ret += "T: %s, " % self.timestamp
+        ret += "L: %s, " % self.locked
+        if hasattr(self, 'dest'):
+            ret += "D: %s, " % self.dest
+        ret += "P: %s" % \
+               str(self.packet).replace('\n', '\\n').replace('\r', '\\r')
+        ret += "\n"
+        return ret

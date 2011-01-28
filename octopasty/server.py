@@ -20,8 +20,10 @@
 import socket
 from threading import Thread
 from datetime import datetime
-from time import mktime, sleep
+from time import mktime, sleep, time
 from asterisk import Action
+
+from utils import Packet
 
 
 class ServerThread(Thread):
@@ -55,6 +57,7 @@ class ServerThread(Thread):
         self.octopasty.clients.update({self.id: self})
 
     def send(self, packet):
+        print "SRVSEND: %s" % packet
         released_lock = None
         if self.locked:
             if packet.locked == self.locked:
@@ -97,11 +100,9 @@ class ServerThread(Thread):
                     self.action.add_parameters({k: v})
 
     def push(self, packet):
-        self.octopasty.in_queue.put(dict(emiter=self.id,
-                                         locked=self.locked,
-                                         timestamp=datetime.now(),
-                                         packet=packet,
-                                         side='client'))
+        p = dict(emiter=self.id, locked=self.locked,
+                 timestamp=time(), packet=packet)
+        self.octopasty.in_queue.put(Packet(p))
 
 
 class MainListener(Thread):
@@ -115,17 +116,23 @@ class MainListener(Thread):
         while True:
             try:
                 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                print "Try to bind on %s %s" % \
-                      (self.octopasty.config.get('bind_address'),
-                       self.octopasty.config.get('bind_port'))
+
                 server.bind((self.octopasty.config.get('bind_address'),
                              int(self.octopasty.config.get('bind_port'))))
-                print "Listening"
+                print "Listening on %s %s" % \
+                      (self.octopasty.config.get('bind_address'),
+                       self.octopasty.config.get('bind_port'))
                 server.listen(5)
                 while True:
                     channel, details = server.accept()
                     st = ServerThread(self.octopasty, channel, details)
                     st.start()
             except socket.error, e:
-                print e
+                print "%s Try to bind on %s %s" % \
+                      (e, self.octopasty.config.get('bind_address'),
+                       self.octopasty.config.get('bind_port'))
                 sleep(10)
+
+    def _get_uid(self):
+        return self.id
+    uid = property(_get_uid)
