@@ -20,8 +20,8 @@
 
 from optparse import OptionParser
 
-from octopasty.config import read_config
-from octopasty.main import Octopasty, __version__
+from octopasty import __version__
+from octopasty.main import Octopasty
 
 
 def main():
@@ -31,8 +31,7 @@ def main():
     args = parser.parse_args()[1]
     if len(args) < 1:
         parser.error("I need config file a config file as argument")
-    config = read_config(args[0])
-    o = Octopasty(config)
+    o = Octopasty(args[0])
     o.loop()
 
 if __name__ == '__main__':
