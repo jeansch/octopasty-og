@@ -94,7 +94,7 @@ def squirm(self):
                         handle_packet(self, packet)
                     else:
                         peer = self.get_peer(dest)
-                        if peer and peer.available:
+                        if peer and peer.available and peer.logged:
                             packet.dest = dest
                             self.out_queue.put(packet)
                         else:
@@ -124,7 +124,7 @@ def squirm(self):
                                 cs = cu.get('server')
                                 if cs:
                                     peer = self.get_peer(cs)
-                                    if peer and peer.available:
+                                    if peer and peer.available and peer.logged:
                                         packet.dest = cs
                                         self.out_queue.put(packet)
                                     else:

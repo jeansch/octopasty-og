@@ -28,10 +28,14 @@ def handle_packet(self, packet):
     # D: __internal__,
     # P: Action: login\nUsername: plop\n
     #    Secret: 64faf5d0b1dc311fd0f94af64f6c296a03045571\nEvents: on\n\n
+    #
+    # TODO: set binded_server, set logged, replace the 'unknowXXXXX' id
+    # check if it wants the events
 
     # from AMI:
     # E: vgw6
     # T: 1296257138.24
     # L: 12962570451093290
     # P: Action: Success\nMessage: Authentication accepted\n\n
+    # TODO: set logged
     pass
