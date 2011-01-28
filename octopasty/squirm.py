@@ -17,9 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 from select import select
 from time import time
+from copy import copy
+
+from internal import handle_packet
 
 
 def readall(self):
@@ -37,16 +39,20 @@ def sendall(self):
         self.queue.queue.clear()
         for packet in outgoing:
             if packet.dest == '__internal__':
-                pass
-                # should be the login stuff
+                handle_packet(self, packet)
             else:
                 dest = self.get_peer(packet.dest)
                 sent = dest.send(packet)
                 if sent:
                     if sent in self.flow:
+                        # then it was an answer
                         self.flow.pop(sent)
                     else:
+                        # then it was a query
                         self.flow[sent] = packet.emiter
+                else:
+                    # They it was an event
+                    pass
 
 
 def burials(self):
@@ -55,6 +61,7 @@ def burials(self):
     for peer in self.peers:
         if peer and peer.locked < apocalypse:
             peer.locked = 0
+    # TODO: Remove the old packets
 
 
 # The nervous central
@@ -65,8 +72,8 @@ def squirm(self):
         self.in_queue.queue.clear()
         for packet in incoming:
             if packet.emiter == '__internal__':
-                dest = self.get_peer(packet.dest)
-                if dest and dest.available:
+                peer = self.get_peer(packet.dest)
+                if peer and peer.available:
                     self.out_queue.put(packet)
                 else:
                     self.in_queue.put(packet)
@@ -74,10 +81,43 @@ def squirm(self):
                 if packet.locked:
                     emiter = self.get_peer(packet.emiter)
                     dest = self.flow.get(emiter.locked)
+                    peer = self.get_peer(dest)
                     emiter.locked = 0
-                    if dest:
+                    if peer and peer.available:
                         packet.dest = dest
                         self.out_queue.put(packet)
+                    else:
+                        self.in_queue.put(packet)
                 else:
-                    # should be broadcast (events)
-                    pass
+                    if packet.emiter in self.connected_servers:
+                        ami = self.get_peer(packet.emiter)
+                        if ami.logged:
+                            for client in self.connected_clients:
+                                peer = self.get_peer(client)
+                                if client.binded_server == packet.emiter and \
+                                   client.wants_events:
+                                    p = copy(packet)
+                                    p.dest = client
+                                    self.out_queue.put(p)
+                        else:
+                            # Do not remove that comment and that case
+                            # it might be logged one day
+                            # ami not logged, and no command before
+                            # i wonder what can it be
+                            pass
+                    if packet.emiter in self.connected_clients:
+                        client = self.get_peer(packet.emiter)
+                        if client.logged:
+                            cu = self.config['users'].get(client.id)
+                            if cu:
+                                cs = cu.get('server')
+                                if cs:
+                                    peer = self.get_peer(cs)
+                                    if peer and peer.available:
+                                        packet.dest = cs
+                                        self.out_queue.put(packet)
+                                    else:
+                                        self.in_queue.put(packet)
+                        else:
+                            packet.dest = '__internal__'
+                            self.out_queue.put(packet)

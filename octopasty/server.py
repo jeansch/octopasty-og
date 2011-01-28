@@ -36,6 +36,7 @@ class ServerThread(Thread):
         self.id = 'unknown%d' % int(mktime(datetime.now().timetuple()))
         self.locked = 0
         self.wants_events = False
+        self.binded_server = None
 
     def set_disconnected(self):
         if self.channel:
