@@ -35,8 +35,8 @@ def readall(self):
 
 def sendall(self):
     if not self.out_queue.empty:
-        outgoing = list(self.queue.queue)
-        self.queue.queue.clear()
+        outgoing = list(self.out_queue.queue)
+        self.out_queue.queue.clear()
         for packet in outgoing:
             if packet.dest == '__internal__':
                 handle_packet(self, packet)
@@ -59,7 +59,7 @@ def burials(self):
     apocalypse = time() - 10
     # Remove old locks
     for peer in self.peers:
-        if peer and peer.locked < apocalypse:
+        if peer and peer.logged and peer.locked < apocalypse:
             peer.locked = 0
     # TODO: Remove the old packets
 
