@@ -44,28 +44,14 @@ def handle_action(self, packet):
 def auth_user(self, emiter, username, secret, events):
     print "%s try to login with %s %s %s" % \
           (emiter, username, secret, events)
-
-    # E: unknown1296257108,
-    # T: 1296257114.41,
-    # L: 0,
-    # D: __internal__,
-    # P: Action: login\nUsername: plop\n
-    #    Secret: 64faf5d0b1dc311fd0f94af64f6c296a03045571\nEvents: on\n\n
-    #
     # TODO: set binded_server, set logged,
     #       replace the 'unknowXXXXX' id (beware of multiple cx)
     #       check if it wants the events
-
     # OK: Action: Success\nMessage: Authentication accepted\n\n
     # NOT OK: Action: Error\nMessage: Authentication failed\n\n
     pass
 
 
 def logged_on_ami(self, ami):
-    # from AMI:
-    # E: vgw6
-    # T: 1296257138.24
-    # L: 12962570451093290
-    # P: Action: Success\nMessage: Authentication accepted\n\n
-    # TODO: set logged
+    # set logged
     pass
