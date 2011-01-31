@@ -18,10 +18,33 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-def handle_packet(self, packet):
-    # TODO: Handle login
+def handle_action(self, packet):
 
-    # from client:
+    action = packet.packet
+    if action.name.lower() == 'error':
+        # needs to handle errors, may be a timeout before next try
+        logged_on_ami(self, packet.emiter)
+
+    if action.name.lower() == 'success':
+        print "Logged successfully on %s" % packet.emiter
+
+    if action.name.lower() == 'login':
+        login = dict()
+        for k in ['Username', 'Secret', 'Events']:
+            v = action.parameters.get(k) or \
+                action.parameters.get(k.lower()) or \
+                action.parameters.get(k.upper())
+            login[k.lower()] = v
+        auth_user(self, packet.emiter, login.get('username'),
+                  login.get('secret'),
+                  login.get('events') and \
+                  login.get('events').lower() == 'on' or False)
+
+
+def auth_user(self, emiter, username, secret, events):
+    print "%s try to login with %s %s %s" % \
+          (emiter, username, secret, events)
+
     # E: unknown1296257108,
     # T: 1296257114.41,
     # L: 0,
@@ -33,6 +56,12 @@ def handle_packet(self, packet):
     #       replace the 'unknowXXXXX' id (beware of multiple cx)
     #       check if it wants the events
 
+    # OK: Action: Success\nMessage: Authentication accepted\n\n
+    # NOT OK: Action: Error\nMessage: Authentication failed\n\n
+    pass
+
+
+def logged_on_ami(self, ami):
     # from AMI:
     # E: vgw6
     # T: 1296257138.24

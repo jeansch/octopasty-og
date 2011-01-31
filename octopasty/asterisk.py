@@ -22,19 +22,20 @@ class Packet(object):
     _name_ = 'Packet'
 
     def __init__(self, name=None, parameters=None):
-        self.out = None
+        self.parameters = dict()
         self.name = name
-        if self.name:
-            self.out = "Action: %s\n" % name
         if self.name and parameters:
             self.add_parameters(parameters)
 
     def add_parameters(self, parameters):
-        for p in parameters:
-            self.out += "%s: %s\n" % (p, parameters.get(p))
+        self.parameters.update(parameters)
 
     def __repr__(self):
-        return self.out + "\n"
+        out = "Action: %s\n" % self.name
+        for p in self.parameters:
+            out += "%s: %s\n" % (p, self.parameters.get(p))
+        out += "\n"
+        return out
 
 
 class Command(Packet):

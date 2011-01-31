@@ -21,7 +21,7 @@ from select import select
 from time import time
 from copy import copy
 
-from internal import handle_packet
+from internal import handle_action
 
 
 def readall(self):
@@ -41,7 +41,7 @@ def sendall(self):
         self.out_queue.queue.clear()
         for packet in outgoing:
             if packet.dest == '__internal__':
-                handle_packet(self, packet)
+                handle_action(self, packet)
             else:
                 dest = self.get_peer(packet.dest)
                 sent = dest.send(packet)
@@ -91,7 +91,7 @@ def squirm(self):
                     emiter.locked = 0
                     dest = self.flow.get("%s" % packet.locked)
                     if dest == '__internal__':
-                        handle_packet(self, packet)
+                        handle_action(self, packet)
                     else:
                         peer = self.get_peer(dest)
                         if peer and peer.available and peer.logged:

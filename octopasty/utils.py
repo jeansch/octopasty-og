@@ -18,9 +18,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-class Packet:
+class NiceDict(object):
     def __init__(self, entries):
         self.__dict__.update(entries)
+
+
+class Packet(NiceDict):
 
     def __repr__(self):
         ret = ""
