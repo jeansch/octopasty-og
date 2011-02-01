@@ -19,11 +19,10 @@
 
 import socket
 from threading import Thread
-from datetime import datetime
-from time import mktime, sleep, time
+from time import sleep, time
 from asterisk import Action
 
-from utils import Packet
+from utils import Packet, bigtime
 
 
 class ServerThread(Thread):
@@ -35,12 +34,12 @@ class ServerThread(Thread):
         self.details = details
         self.action = None
         self.logged = False
-        self.id = 'unknown%d' % int(mktime(datetime.now().timetuple()))
+        self.id = 'unknown_%d' % bigtime()
         self.locked = 0
         self.wants_events = False
         self.binded_server = None
 
-    def set_disconnected(self):
+    def disconnect(self):
         # TODO: remove the logged and any other meaning full status
         if self.channel:
             self.channel.close()
@@ -58,13 +57,12 @@ class ServerThread(Thread):
         self.octopasty.clients.update({self.id: self})
 
     def send(self, packet):
-        print "SRVSEND: %s" % packet
         released_lock = None
         if self.locked:
             if packet.locked == self.locked:
                 # it's for me
                 self.file.write(packet.packet)
-                self.flush()
+                self.file.flush()
                 released_lock = self.locked
                 self.locked = 0
             else:
@@ -74,7 +72,7 @@ class ServerThread(Thread):
             # on let events go
             if not packet.locked:
                 self.file.write(packet.packet)
-                self.flush()
+                self.file.flush()
             else:
                 # humm, why we get that ??
                 pass
@@ -83,7 +81,7 @@ class ServerThread(Thread):
     def handle_line(self):
         line = self.file.readline()
         if len(line) == 0:
-            self.set_disconnected()
+            self.disconnect()
         else:
             line = line.strip()
             # if locked, we are waiting for a result

@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import sys
 from time import sleep
 from datetime import datetime, timedelta
 from Queue import Queue
@@ -107,9 +108,16 @@ class Octopasty(object):
     def loop(self):
         self.listen_clients()
         while True:
-            self.connect_servers()
-            self.idle()
-            readall(self)
-            squirm(self)
-            burials(self)
-            sendall(self)
+            try:
+                self.connect_servers()
+                self.idle()
+                readall(self)
+                squirm(self)
+                burials(self)
+                sendall(self)
+            except KeyboardInterrupt:
+                for ami in self.amis.values():
+                    ami.disconnect()
+                for client in self.clients.values():
+                    client.disconnect()
+                print "Bye bye..."

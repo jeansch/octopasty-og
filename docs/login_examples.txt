@@ -6,7 +6,7 @@ Secret: d6ZuDrap9eruwuJabajadapru9re7F
 # to verify
 Action: login
 Username: plop
-Secret: 64faf5d0b1dc311fd0f94af64f6c296a03045571
+Secret: plop
 Events: on
 
 

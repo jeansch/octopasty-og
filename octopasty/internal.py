@@ -17,16 +17,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from hashlib import sha1
+from time import time
+
+from utils import Packet, bigtime
+from asterisk import Success, Error
+
 
 def handle_action(self, packet):
 
     action = packet.packet
     if action.name.lower() == 'error':
         # needs to handle errors, may be a timeout before next try
-        logged_on_ami(self, packet.emiter)
+        pass
 
     if action.name.lower() == 'success':
-        print "Logged successfully on %s" % packet.emiter
+        logged_on_ami(self, packet.emiter)
 
     if action.name.lower() == 'login':
         login = dict()
@@ -41,17 +47,38 @@ def handle_action(self, packet):
                   login.get('events').lower() == 'on' or False)
 
 
-def auth_user(self, emiter, username, secret, events):
-    print "%s try to login with %s %s %s" % \
-          (emiter, username, secret, events)
-    # TODO: set binded_server, set logged,
-    #       replace the 'unknowXXXXX' id (beware of multiple cx)
-    #       check if it wants the events
-    # OK: Action: Success\nMessage: Authentication accepted\n\n
-    # NOT OK: Action: Error\nMessage: Authentication failed\n\n
-    pass
+def auth_user(self, emiter, username, secret, wants_events):
+    if username in self.config.get('users'):
+        hashed = self.config.get('users').get(username).get('password')
+        client = self.clients.get(emiter)
+        if sha1(secret).hexdigest() == hashed:
+            # good user
+            old_id = client.id
+            client.id = '%s_%d' % (username, bigtime())
+            self.clients.pop(old_id)
+            self.clients.update({client.id: client})
+            client.logged = True
+            server = self.config.get('users').get(username).get('server')
+            client.binded_server = server
+            client.wants_events = wants_events
+            action = Success(dict(Message='Authentication accepted'))
+            p = dict(emiter='__internal__',
+                     locked=None,
+                     timestamp=time(),
+                     packet=action,
+                     dest=client.id)
+            self.out_queue.put(Packet(p))
+        else:
+            action = Error(dict(Message='Authentication failed'))
+            p = dict(emiter='__internal__',
+                     locked=None,
+                     timestamp=time(),
+                     packet=action,
+                     dest=client.id)
+            client.send(Packet(p))
+            client.disconnect()
 
 
-def logged_on_ami(self, ami):
-    # set logged
-    pass
+def logged_on_ami(self, _ami):
+    ami = self.amis.get(_ami)
+    ami.logged = True

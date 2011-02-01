@@ -60,9 +60,23 @@ class Event(Answer):
     _name_ = 'Event'
 
 
-class Response(Answer):
+class Response(Packet):
     _name_ = 'Response'
 
 
 class Action(Answer):
     _name_ = 'Action'
+
+
+class Success(Action):
+    _name_ = 'Success'
+
+    def __init__(self, parameters):
+        Action.__init__(self, 'Success', parameters)
+
+
+class Error(Action):
+    _name_ = 'Error'
+
+    def __init__(self, parameters):
+        Action.__init__(self, 'Error', parameters)

@@ -17,6 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from time import time
+
 
 class NiceDict(object):
     def __init__(self, entries):
@@ -36,3 +38,7 @@ class Packet(NiceDict):
                str(self.packet).replace('\n', '\\n').replace('\r', '\\r')
         ret += "\n"
         return ret
+
+
+def bigtime(delta=0):
+    return int((time() + delta) * 10000000)

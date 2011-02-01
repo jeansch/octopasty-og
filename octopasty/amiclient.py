@@ -43,7 +43,7 @@ class AMIClient(Thread):
         self.logged = False
         self.locked = False
 
-    def set_disconnected(self):
+    def disconnect(self):
         if self.socket:
             self.socket.close()
             self.socket = None
@@ -79,7 +79,7 @@ class AMIClient(Thread):
     def handle_line(self):
         line = self.file.readline()
         if len(line) == 0:
-            self.set_disconnected()
+            self.disconnect()
         else:
             line = line.strip()
             if line.startswith('Asterisk Call Manager'):

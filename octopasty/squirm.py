@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from select import select
+from utils import bigtime
 from time import time
 from copy import copy
 
@@ -58,7 +59,7 @@ def sendall(self):
 
 
 def burials(self):
-    apocalypse = int((time() - 10) * 10000000)
+    apocalypse = bigtime(-10)
     # Remove old locks
     for peer in self.peers:
         if peer and peer.logged and peer.locked < apocalypse:
@@ -105,8 +106,8 @@ def squirm(self):
                         if ami.logged:
                             for client in self.connected_clients:
                                 peer = self.get_peer(client)
-                                if client.binded_server == packet.emiter and \
-                                   client.wants_events:
+                                if peer.binded_server == packet.emiter and \
+                                   peer.wants_events:
                                     p = copy(packet)
                                     p.dest = client
                                     self.out_queue.put(p)
