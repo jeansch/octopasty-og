@@ -33,7 +33,11 @@ class Packet(object):
     def __repr__(self):
         out = "Action: %s\n" % self.name
         for p in self.parameters:
-            out += "%s: %s\n" % (p, self.parameters.get(p))
+            if self.parameters[p] == None:
+                out += "%s\n" % p
+                pass
+            else:
+                out += "%s: %s\n" % (p, self.parameters.get(p))
         out += "\n"
         return out
 

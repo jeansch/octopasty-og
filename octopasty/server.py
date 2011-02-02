@@ -40,7 +40,6 @@ class ServerThread(Thread):
         self.binded_server = None
 
     def disconnect(self):
-        # TODO: remove the logged and any other meaning full status
         if self.channel:
             self.channel.close()
             self.channel = None
@@ -79,29 +78,50 @@ class ServerThread(Thread):
         return released_lock
 
     def handle_line(self):
-        line = self.file.readline()
-        if len(line) == 0:
-            self.disconnect()
-        else:
-            line = line.strip()
-            # if locked, we are waiting for a result
-            if not self.locked and line.startswith('Action:'):
-                self.action = Action(line.replace('Action: ', ''))
-            elif line == '':
-                if self.action:
-                    self.push(self.action)
-                    self.action = None
-            else:
-                if ':' in line:
-                    k = line.split(':')[0]
-                    v = ':'.join(line.split(':')[1:]).lstrip()
-                if self.action:
-                    self.action.add_parameters({k: v})
+        can_read = False
+        if self.channel:
+            can_read = True
+            self.channel.setblocking(0)
+        while can_read and self.file:
+            try:
+                line = self.file.readline()
+                if len(line) == 0:
+                    self.disconnect()
+                else:
+                    line = line.strip()
+                    # if locked, we are waiting for a result
+                    if not self.locked:
+                        if line.startswith('Action:'):
+                            self.action = Action(line.replace('Action:',
+                                                              '').strip())
+                        elif line == '':
+                            if self.action:
+                                self.locked = bigtime()
+                                self.push(self.action)
+                                self.action = None
+                        else:
+                            if ':' in line:
+                                k = line.split(':')[0]
+                                v = ':'.join(line.split(':')[1:]).lstrip()
+                            if self.action:
+                                self.action.add_parameters({k: v})
+            except socket.error:
+                can_read = False
+        if self.channel:
+            self.channel.setblocking(1)
 
     def push(self, packet):
         p = dict(emiter=self.id, locked=self.locked,
                  timestamp=time(), packet=packet)
         self.octopasty.in_queue.put(Packet(p))
+
+    def _get_available(self):
+        return self.connected and not self.locked
+    available = property(_get_available)
+
+    def _get_uid(self):
+        return self.id
+    uid = property(_get_uid)
 
 
 class MainListener(Thread):
@@ -131,7 +151,3 @@ class MainListener(Thread):
                       (e, self.octopasty.config.get('bind_address'),
                        self.octopasty.config.get('bind_port'))
                 sleep(10)
-
-    def _get_uid(self):
-        return self.id
-    uid = property(_get_uid)

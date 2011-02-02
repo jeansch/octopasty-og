@@ -41,18 +41,17 @@ def handle_action(self, packet):
                 action.parameters.get(k.lower()) or \
                 action.parameters.get(k.upper())
             login[k.lower()] = v
-        auth_user(self, packet.emiter, login.get('username'),
+        auth_user(self, packet.emiter, packet.locked, login.get('username'),
                   login.get('secret'),
                   login.get('events') and \
                   login.get('events').lower() == 'on' or False)
 
 
-def auth_user(self, emiter, username, secret, wants_events):
+def auth_user(self, emiter, locked, username, secret, wants_events):
     if username in self.config.get('users'):
         hashed = self.config.get('users').get(username).get('password')
         client = self.clients.get(emiter)
         if sha1(secret).hexdigest() == hashed:
-            # good user
             old_id = client.id
             client.id = '%s_%d' % (username, bigtime())
             self.clients.pop(old_id)
@@ -63,7 +62,7 @@ def auth_user(self, emiter, username, secret, wants_events):
             client.wants_events = wants_events
             action = Success(dict(Message='Authentication accepted'))
             p = dict(emiter='__internal__',
-                     locked=None,
+                     locked=locked,
                      timestamp=time(),
                      packet=action,
                      dest=client.id)
@@ -71,7 +70,7 @@ def auth_user(self, emiter, username, secret, wants_events):
         else:
             action = Error(dict(Message='Authentication failed'))
             p = dict(emiter='__internal__',
-                     locked=None,
+                     locked=locked,
                      timestamp=time(),
                      packet=action,
                      dest=client.id)

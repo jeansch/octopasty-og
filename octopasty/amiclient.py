@@ -20,7 +20,7 @@
 import socket
 from threading import Thread
 from time import time
-from utils import Packet
+from utils import Packet, bigtime
 
 from asterisk import Login
 from asterisk import Event, Response
@@ -56,14 +56,16 @@ class AMIClient(Thread):
         if not self.locked:
             self.file.write(packet.packet)
             self.file.flush()
-            self.locked = int(time() * 10000000)
+            #self.locked = int(time() * 10000000)
+            self.locked = packet.locked
             return self.locked
         else:
             return None
 
     def login(self):
         self.push(Login(self.user, self.password),
-                  emiter='__internal__', dest=self.server)
+                  emiter='__internal__', dest=self.server,
+                  locked=bigtime())
 
     def run(self):
         try:
@@ -72,44 +74,58 @@ class AMIClient(Thread):
             self.socket = s
             self.octopasty.amis.update({self.server: self})
             self.connected = True
-            self.file = self.socket.makefile()
+            self.file = self.socket.makefile(bufsize=42)
         except socket.error:
             pass
 
     def handle_line(self):
-        line = self.file.readline()
-        if len(line) == 0:
-            self.disconnect()
-        else:
-            line = line.strip()
-            if line.startswith('Asterisk Call Manager'):
-                self.login()
-                return
-            if self.locked and line.startswith('Response:'):
-                self.response = Response(line.replace('Response: ', ''))
-                self.event = None
-            elif line.startswith('Event:'):
-                self.event = Event(line.replace('Event: ', ''))
-                self.response = None
-            elif line == '':
-                if self.response:
-                    self.push(self.response)
-                    self.response = None
-                elif self.event:
-                    self.push(self.event)
-                    self.event = None
-            else:
-                if ':' in line:
-                    k = line.split(':')[0]
-                    v = ':'.join(line.split(':')[1:]).lstrip()
-                if self.response:
-                    self.response.add_parameters({k: v})
-                if self.event:
-                    self.event.add_parameters({k: v})
+        can_read = False
+        if self.socket:
+            can_read = True
+            self.socket.setblocking(0)
+        while can_read and self.file:
+            try:
+                line = self.file.readline()
+                if len(line) == 0:
+                    self.disconnect()
+                else:
+                    line = line.strip()
+                    if line.startswith('Asterisk Call Manager'):
+                        self.login()
+                        return
+                    if self.locked and line.startswith('Response:'):
+                        self.response = Response(line.replace('Response:',
+                                                              '').strip())
+                        self.event = None
+                    elif line.startswith('Event:'):
+                        self.event = Event(line.replace('Event:', '').strip())
+                        self.response = None
+                    elif line == '':
+                        if self.response:
+                            self.push(self.response)
+                            self.response = None
+                        elif self.event:
+                            self.push(self.event)
+                            self.event = None
+                    else:
+                        if ':' in line:
+                            k = line.split(':')[0]
+                            v = ':'.join(line.split(':')[1:]).lstrip()
+                        else:
+                            k = line
+                            v = None
+                        if self.response:
+                            self.response.add_parameters({k: v})
+                        if self.event:
+                            self.event.add_parameters({k: v})
+            except socket.error:
+                can_read = False
+        if self.socket:
+            self.socket.setblocking(1)
 
-    def push(self, packet, emiter=None, dest=None):
+    def push(self, packet, emiter=None, dest=None, locked=0):
         p = dict(emiter=emiter or self.server,
-                 locked=self.locked, timestamp=time(),
+                 locked=locked or self.locked, timestamp=time(),
                  packet=packet)
         if dest:
             p['dest'] = dest
