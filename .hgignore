@@ -6,3 +6,6 @@ syntax: glob
 *.swo
 *~
 development.ini
+octopasty.egg-info
+build
+dist
