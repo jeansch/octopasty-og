@@ -24,7 +24,8 @@ from Queue import Queue
 
 from amiclient import AMIClient
 from server import MainListener
-from squirm import readall, squirm, burials, sendall
+from squirm import squirm, burials
+from allios import readall, sendall
 from config import read_config
 
 _1S = timedelta(0, 1)

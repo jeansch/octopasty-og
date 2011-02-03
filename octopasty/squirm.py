@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from select import select
+
 from utils import bigtime
 from time import time
 from copy import copy
@@ -25,39 +25,6 @@ from copy import copy
 from utils import Packet
 from asterisk import Error
 from internal import handle_action
-
-
-def readall(self):
-    reading = self.ami_files + self.client_files
-    if len(reading) > 0:
-        # it's a timeout, that means that 0 != None
-        timeout = self.out_queue.empty() and 1 or 0
-        to_read, _, _ = select(reading, [], [], timeout)
-        for f in to_read:
-            peer = self.find_peer_from_file(f)
-            peer.handle_line()
-
-
-def sendall(self):
-    if not self.out_queue.empty():
-        outgoing = list(self.out_queue.queue)
-        self.out_queue.queue.clear()
-        for packet in outgoing:
-            if packet.dest == '__internal__':
-                handle_action(self, packet)
-            else:
-                dest = self.get_peer(packet.dest)
-                sent = dest.send(packet)
-                if sent:
-                    if sent in self.flow:
-                        # then it was an answer
-                        self.flow.pop("%s" % sent)
-                    else:
-                        # then it was a query
-                        self.flow["%s" % sent] = packet.emiter
-                else:
-                    # They it was an event
-                    pass
 
 
 def burials(self):
@@ -83,7 +50,6 @@ def squirm(self):
                     dest = dest = self.flow.get("%s" % packet.locked)
                     if dest != '__internal__':
                         peer = self.get_peer(dest)
-                        # HERE
             if packet.emiter == '__internal__':
                 peer = self.get_peer(packet.dest)
                 if peer and peer.available:
@@ -107,6 +73,9 @@ def squirm(self):
                                     self.out_queue.put(packet)
                                 else:
                                     self.in_queue.put(packet)
+                        else:
+                            # no dest
+                            pass
                     if packet.emiter in self.connected_clients:
                         client = self.get_peer(packet.emiter)
                         if client.logged:
@@ -123,7 +92,9 @@ def squirm(self):
                                         else:
                                             self.in_queue.put(packet)
                                     else:
-                                        response = Error(parameters=dict(Message='Server unavailable'))
+                                        response = Error(
+                                            parameters=dict(
+                                                Message='Server unavailable'))
                                         p = dict(emiter=cs,
                                                  locked=packet.locked,
                                                  timestamp=time(),

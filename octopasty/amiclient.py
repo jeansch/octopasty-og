@@ -132,6 +132,7 @@ class AMIClient(Thread):
                  packet=packet)
         if dest:
             p['dest'] = dest
+#        print "%s PUSH %s" % (self.server, p)
         self.octopasty.in_queue.put(Packet(p))
 
     def _get_available(self):

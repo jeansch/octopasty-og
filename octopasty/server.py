@@ -21,6 +21,7 @@ import socket
 from threading import Thread
 from time import sleep, time
 from asterisk import Action
+from asterisk import STARTING_EVENTS_KEYWORDS
 
 from utils import Packet, bigtime
 from utils import deprotect, tmp_debug
@@ -39,6 +40,7 @@ class ServerThread(Thread):
         self.locked = 0
         self.wants_events = False
         self.binded_server = None
+        self.keep_flow = False
 
     def disconnect(self):
         if self.channel:
@@ -65,7 +67,8 @@ class ServerThread(Thread):
                 self.file.write(packet.packet)
                 self.file.flush()
                 released_lock = self.locked
-                self.locked = 0
+                if not self.keep_flow:
+                    self.locked = 0
             else:
                 # just discard, may be too old
                 pass
@@ -114,6 +117,8 @@ class ServerThread(Thread):
             self.channel.setblocking(1)
 
     def push(self, packet):
+        if packet.name.lower() in STARTING_EVENTS_KEYWORDS:
+            self.keep_flow = True
         p = dict(emiter=self.id, locked=self.locked,
                  timestamp=time(), packet=packet)
         self.octopasty.in_queue.put(Packet(p))

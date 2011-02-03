@@ -17,6 +17,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# must be lowercased
+STARTING_EVENTS_KEYWORDS = ['queuestatus']
+STOPPING_EVENTS_KEYWORDS = ['queuestatuscomplete']
+
 
 class MetaPacket(object):
     _name_ = 'MetaPacket'
