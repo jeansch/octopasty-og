@@ -18,23 +18,26 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-class Packet(object):
-    _name_ = 'Packet'
+class MetaPacket(object):
+    _name_ = 'MetaPacket'
+    _direction_ = 'Action'
 
     def __init__(self, name=None, parameters=None):
         self.parameters = dict()
-        self.name = name
+        self.parameters_order = list()
+        self.name = name or self._name_
         if self.name and parameters:
             self.add_parameters(parameters)
 
     def add_parameters(self, parameters):
         self.parameters.update(parameters)
+        self.parameters_order.extend(parameters.keys())
 
     def __repr__(self):
-        out = "Action: %s\r\n" % self.name
-        for p in self.parameters:
+        out = "%s: %s\r\n" % (self._direction_, self.name)
+        for p in self.parameters_order:
             if self.parameters[p] == None:
-                out += "%s\r\n" % p
+                out += "%s\n" % p
                 pass
             else:
                 out += "%s: %s\r\n" % (p, self.parameters.get(p))
@@ -42,45 +45,34 @@ class Packet(object):
         return out
 
 
-class Command(Packet):
-    _name_ = 'Command'
-    pass
-
-
-class Login(Command):
-    _name_ = 'Login'
-
-    def __init__(self, login, password):
-        Command.__init__(self, 'login', dict(Username=login,
-                                             Secret=password,
-                                             Events='on'))
-
-
-class Answer(Packet):
-    _name_ = 'Answer'
-
-
-class Event(Answer):
+# main classes
+class Event(MetaPacket):
     _name_ = 'Event'
+    _direction_ = 'Event'
 
 
-class Response(Packet):
+class Response(MetaPacket):
     _name_ = 'Response'
+    _direction_ = 'Response'
 
 
-class Action(Answer):
+class Action(MetaPacket):
     _name_ = 'Action'
 
 
-class Success(Action):
+# real things
+class Login(Action):
+    _name_ = 'Login'
+
+    def __init__(self, login, password):
+        Action.__init__(self, parameters=dict(Username=login,
+                                               Secret=password,
+                                               Events='on'))
+
+
+class Success(Response):
     _name_ = 'Success'
 
-    def __init__(self, parameters):
-        Action.__init__(self, 'Success', parameters)
 
-
-class Error(Action):
+class Error(Response):
     _name_ = 'Error'
-
-    def __init__(self, parameters):
-        Action.__init__(self, 'Error', parameters)

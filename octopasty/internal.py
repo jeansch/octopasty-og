@@ -60,19 +60,20 @@ def auth_user(self, emiter, locked, username, secret, wants_events):
             server = self.config.get('users').get(username).get('server')
             client.binded_server = server
             client.wants_events = wants_events
-            action = Success(dict(Message='Authentication accepted'))
+            response = Success(parameters=dict(
+                Message='Authentication accepted'))
             p = dict(emiter='__internal__',
                      locked=locked,
                      timestamp=time(),
-                     packet=action,
+                     packet=response,
                      dest=client.id)
             self.out_queue.put(Packet(p))
         else:
-            action = Error(dict(Message='Authentication failed'))
+            response = Error(parameters=dict(Message='Authentication failed'))
             p = dict(emiter='__internal__',
                      locked=locked,
                      timestamp=time(),
-                     packet=action,
+                     packet=response,
                      dest=client.id)
             client.send(Packet(p))
             client.disconnect()

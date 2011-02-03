@@ -59,7 +59,6 @@ class AMIClient(Thread):
                                     deprotect(packet.packet)))
             self.file.write(packet.packet)
             self.file.flush()
-            #self.locked = int(time() * 10000000)
             self.locked = packet.locked
             return self.locked
         else:
@@ -92,17 +91,17 @@ class AMIClient(Thread):
                 if len(line) == 0:
                     self.disconnect()
                 else:
-                    print "%s <= %s" % (self.uid, deprotect(line))
+                    tmp_debug("%s <= %s" % (self.uid, deprotect(line)))
                     line = line.strip()
                     if line.startswith('Asterisk Call Manager'):
                         self.login()
                         return
-                    if self.locked and line.startswith('Response:'):
-                        self.response = Response(line.replace('Response:',
-                                                              '').strip())
+                    if self.locked and line.lower().startswith('response:'):
+                        self.response = \
+                                  Response(line[line.find(':') + 1:].strip())
                         self.event = None
-                    elif line.startswith('Event:'):
-                        self.event = Event(line.replace('Event:', '').strip())
+                    elif line.lower().startswith('event:'):
+                        self.event = Event(line[line.find(':') + 1:].strip())
                         self.response = None
                     elif line == '':
                         if self.response:

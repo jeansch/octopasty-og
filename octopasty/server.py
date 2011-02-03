@@ -90,13 +90,13 @@ class ServerThread(Thread):
                 if len(line) == 0:
                     self.disconnect()
                 else:
-                    print "%s <= %s" % (self.uid, deprotect(line))
+                    tmp_debug("%s <= %s" % (self.uid, deprotect(line)))
                     line = line.strip()
                     # if locked, we are waiting for a result
                     if not self.locked:
-                        if line.startswith('Action:'):
-                            self.action = Action(line.replace('Action:',
-                                                              '').strip())
+                        if line.lower().startswith('action:'):
+                            self.action = \
+                                     Action(line[line.find(':') + 1:].strip())
                         elif line == '':
                             if self.action:
                                 self.locked = bigtime()
@@ -105,7 +105,7 @@ class ServerThread(Thread):
                         else:
                             if ':' in line:
                                 k = line.split(':')[0]
-                                v = ':'.join(line.split(':')[1:]).lstrip()
+                                v = line[line.find(':') + 1:].strip()
                             if self.action:
                                 self.action.add_parameters({k: v})
             except socket.error:
@@ -150,7 +150,7 @@ class MainListener(Thread):
                     st = ServerThread(self.octopasty, channel, details)
                     st.start()
             except socket.error, e:
-                print "%s Try to bind on %s %s" % \
+                print "%s trying to bind on %s %s" % \
                       (e, self.octopasty.config.get('bind_address'),
                        self.octopasty.config.get('bind_port'))
                 sleep(10)

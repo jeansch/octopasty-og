@@ -22,6 +22,8 @@ from utils import bigtime
 from time import time
 from copy import copy
 
+from utils import Packet
+from asterisk import Error
 from internal import handle_action
 
 
@@ -114,11 +116,20 @@ def squirm(self):
                                 cs = cu.get('server')
                                 if cs:
                                     peer = self.get_peer(cs)
-                                    if peer and peer.available and peer.logged:
-                                        packet.dest = cs
-                                        self.out_queue.put(packet)
+                                    if peer and peer.logged:
+                                        if peer.available:
+                                            packet.dest = cs
+                                            self.out_queue.put(packet)
+                                        else:
+                                            self.in_queue.put(packet)
                                     else:
-                                        self.in_queue.put(packet)
+                                        response = Error(parameters=dict(Message='Server unavailable'))
+                                        p = dict(emiter=cs,
+                                                 locked=packet.locked,
+                                                 timestamp=time(),
+                                                 packet=response,
+                                                 dest=client.id)
+                                        self.out_queue.put(Packet(p))
                         else:
                             packet.dest = '__internal__'
                             self.out_queue.put(packet)
