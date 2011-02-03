@@ -21,6 +21,7 @@ import socket
 from threading import Thread
 from time import time
 from utils import Packet, bigtime
+from utils import deprotect, tmp_debug
 
 from asterisk import Login
 from asterisk import Event, Response
@@ -54,6 +55,8 @@ class AMIClient(Thread):
 
     def send(self, packet):
         if not self.locked:
+            tmp_debug("%s => %s" % (self.uid,
+                                    deprotect(packet.packet)))
             self.file.write(packet.packet)
             self.file.flush()
             #self.locked = int(time() * 10000000)
@@ -89,6 +92,7 @@ class AMIClient(Thread):
                 if len(line) == 0:
                     self.disconnect()
                 else:
+                    print "%s <= %s" % (self.uid, deprotect(line))
                     line = line.strip()
                     if line.startswith('Asterisk Call Manager'):
                         self.login()

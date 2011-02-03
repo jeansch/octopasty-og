@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 from time import time
 
 
@@ -42,3 +43,12 @@ class Packet(NiceDict):
 
 def bigtime(delta=0):
     return int((time() + delta) * 10000000)
+
+
+def deprotect(s):
+    return str(s).replace('\r', '\\r').replace('\n', '\\n')
+
+
+def tmp_debug(s):
+    if 'OCTOPASTY_PRINT_IO' in os.environ:
+        print s

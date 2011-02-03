@@ -9,3 +9,6 @@ development.ini
 octopasty.egg-info
 build
 dist
+bin
+lib
+include

@@ -23,6 +23,7 @@ from time import sleep, time
 from asterisk import Action
 
 from utils import Packet, bigtime
+from utils import deprotect, tmp_debug
 
 
 class ServerThread(Thread):
@@ -59,7 +60,8 @@ class ServerThread(Thread):
         released_lock = None
         if self.locked:
             if packet.locked == self.locked:
-                # it's for me
+                tmp_debug("%s => %s" % (self.uid,
+                                        deprotect(packet.packet)))
                 self.file.write(packet.packet)
                 self.file.flush()
                 released_lock = self.locked
@@ -88,6 +90,7 @@ class ServerThread(Thread):
                 if len(line) == 0:
                     self.disconnect()
                 else:
+                    print "%s <= %s" % (self.uid, deprotect(line))
                     line = line.strip()
                     # if locked, we are waiting for a result
                     if not self.locked:
