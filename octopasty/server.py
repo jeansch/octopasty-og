@@ -51,7 +51,7 @@ class ServerThread(Thread):
     def run(self):
         self.file = self.channel.makefile()
         self.connected = True
-        self.file.write("Asterisk Call Manager/1.1\n")
+        self.file.write("Asterisk Call Manager/1.1\r\n")
         self.file.flush()
         self.octopasty.clients.update({self.id: self})
 

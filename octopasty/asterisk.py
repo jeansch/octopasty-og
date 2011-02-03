@@ -31,14 +31,14 @@ class Packet(object):
         self.parameters.update(parameters)
 
     def __repr__(self):
-        out = "Action: %s\n" % self.name
+        out = "Action: %s\r\n" % self.name
         for p in self.parameters:
             if self.parameters[p] == None:
-                out += "%s\n" % p
+                out += "%s\r\n" % p
                 pass
             else:
-                out += "%s: %s\n" % (p, self.parameters.get(p))
-        out += "\n"
+                out += "%s: %s\r\n" % (p, self.parameters.get(p))
+        out += "\r\n"
         return out
 
 
