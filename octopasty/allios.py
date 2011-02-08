@@ -21,6 +21,7 @@
 from select import select
 from internal import handle_action
 from asterisk import STOPPING_EVENTS_KEYWORDS
+from utils import tmp_debug
 
 
 def readall(self):
@@ -49,6 +50,8 @@ def sendall(self):
                         keep_flow = dest.keep_flow
                         if packet.name.lower() in STOPPING_EVENTS_KEYWORDS:
                             keep_flow = False
+                            dest.keep_flow = False
+                            tmp_debug("%s ___ keep_flow = False" % dest.uid)
                         # then it was an answer
                         if not keep_flow:
                             self.flow.pop("%s" % sent)
@@ -56,5 +59,5 @@ def sendall(self):
                         # then it was a query
                         self.flow["%s" % sent] = packet.emiter
                 else:
-                    # They it was an event
+                    # Then it was an event
                     pass
