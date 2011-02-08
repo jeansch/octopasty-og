@@ -110,7 +110,6 @@ class Octopasty(object):
         looping = True
         self.listen_clients()
         while looping:
-            print "loop"
             try:
                 self.connect_servers()
                 self.idle()
@@ -125,6 +124,6 @@ class Octopasty(object):
                     client.disconnect()
                 print "Bye bye..."
                 looping = False
-        if self.listener:
-            self.listener.stop()
-        print "i am here"
+        # TODO: find a way to stop the listener
+        # if self.listener:
+        #    self.listener.stop()

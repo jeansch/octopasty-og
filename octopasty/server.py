@@ -155,11 +155,8 @@ class MainListener(Thread):
                       (self.octopasty.config.get('bind_address'),
                        self.octopasty.config.get('bind_port'))
                 self.s.listen(5)
-                print "here1"
                 while True:
-                    print "here2"
                     channel, details = self.s.accept()
-                    print "here3"
                     st = ServerThread(self.octopasty, channel, details)
                     st.start()
             except socket.error, e:
