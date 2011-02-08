@@ -46,6 +46,7 @@ class AMIClient(Thread):
 
     def disconnect(self):
         if self.socket:
+            self.socket.shutdown(socket.SHUT_RDWR)
             self.socket.close()
             self.socket = None
         if self.server in self.octopasty.amis:

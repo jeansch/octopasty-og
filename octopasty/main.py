@@ -43,6 +43,7 @@ class Octopasty(object):
         self.in_queue = Queue()
         self.out_queue = Queue()
         self.flow = dict()
+        self.listener = None
 
     # AMI side
     def connect_server(self, server):
@@ -106,8 +107,10 @@ class Octopasty(object):
             sleep(1)
 
     def loop(self):
+        looping = True
         self.listen_clients()
-        while True:
+        while looping:
+            print "loop"
             try:
                 self.connect_servers()
                 self.idle()
@@ -121,3 +124,7 @@ class Octopasty(object):
                 for client in self.clients.values():
                     client.disconnect()
                 print "Bye bye..."
+                looping = False
+        if self.listener:
+            self.listener.stop()
+        print "i am here"

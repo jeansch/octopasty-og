@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
 import socket
 from threading import Thread
 from time import sleep, time
@@ -44,6 +45,7 @@ class ServerThread(Thread):
 
     def disconnect(self):
         if self.channel:
+            self.channel.shutdown(socket.SHUT_RDWR)
             self.channel.close()
             self.channel = None
         if self.id in self.octopasty.clients:
@@ -75,6 +77,8 @@ class ServerThread(Thread):
         else:
             # on let events go
             if not packet.locked:
+                tmp_debug("%s => %s" % (self.uid,
+                                        deprotect(packet.packet)))
                 self.file.write(packet.packet)
                 self.file.flush()
             else:
@@ -119,6 +123,7 @@ class ServerThread(Thread):
     def push(self, packet):
         if packet.name.lower() in STARTING_EVENTS_KEYWORDS:
             self.keep_flow = True
+            tmp_debug("%s ___ keep_flow = True" % self.uid)
         p = dict(emiter=self.id, locked=self.locked,
                  timestamp=time(), packet=packet)
         self.octopasty.in_queue.put(Packet(p))
@@ -137,21 +142,24 @@ class MainListener(Thread):
     def __init__(self, octopasty):
         Thread.__init__(self)
         self.octopasty = octopasty
+        self.octopasty.listener = self
         self.start()
 
     def run(self):
         while True:
             try:
-                server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-                server.bind((self.octopasty.config.get('bind_address'),
+                self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.s.bind((self.octopasty.config.get('bind_address'),
                              int(self.octopasty.config.get('bind_port'))))
                 print "Listening on %s %s" % \
                       (self.octopasty.config.get('bind_address'),
                        self.octopasty.config.get('bind_port'))
-                server.listen(5)
+                self.s.listen(5)
+                print "here1"
                 while True:
-                    channel, details = server.accept()
+                    print "here2"
+                    channel, details = self.s.accept()
+                    print "here3"
                     st = ServerThread(self.octopasty, channel, details)
                     st.start()
             except socket.error, e:
