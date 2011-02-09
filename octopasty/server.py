@@ -21,11 +21,14 @@
 import socket
 from threading import Thread
 from time import sleep, time
+import errno
 from asterisk import Action
 from asterisk import STARTING_EVENTS_KEYWORDS
 
 from utils import Packet, bigtime
 from utils import deprotect, tmp_debug
+
+LISTENING_TIMEOUT = 10
 
 
 class ServerThread(Thread):
@@ -45,8 +48,11 @@ class ServerThread(Thread):
 
     def disconnect(self):
         if self.channel:
-            self.channel.shutdown(socket.SHUT_RDWR)
-            self.channel.close()
+            try:
+                self.channel.shutdown(socket.SHUT_RDWR)
+                self.channel.close()
+            except:
+                pass
             self.channel = None
         if self.id in self.octopasty.clients:
             self.octopasty.clients.pop(self.id)
@@ -126,6 +132,7 @@ class ServerThread(Thread):
             tmp_debug("%s ___ keep_flow = True" % self.uid)
         p = dict(emiter=self.id, locked=self.locked,
                  timestamp=time(), packet=packet)
+        tmp_debug("%s >[] %s" % (self.uid, deprotect(str(p))))
         self.octopasty.in_queue.put(Packet(p))
 
     def _get_available(self):
@@ -146,7 +153,8 @@ class MainListener(Thread):
         self.start()
 
     def run(self):
-        while True:
+        self.listening = True
+        while self.listening:
             try:
                 self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.s.bind((self.octopasty.config.get('bind_address'),
@@ -155,12 +163,29 @@ class MainListener(Thread):
                       (self.octopasty.config.get('bind_address'),
                        self.octopasty.config.get('bind_port'))
                 self.s.listen(5)
-                while True:
+                while self.listening:
                     channel, details = self.s.accept()
                     st = ServerThread(self.octopasty, channel, details)
                     st.start()
             except socket.error, e:
-                print "%s trying to bind on %s %s" % \
-                      (e, self.octopasty.config.get('bind_address'),
-                       self.octopasty.config.get('bind_port'))
-                sleep(10)
+                if e.errno == errno.EADDRINUSE:
+                    print "Address already in use trying to bind on %s %s" % \
+                          (self.octopasty.config.get('bind_address'),
+                           self.octopasty.config.get('bind_port'))
+                    for timeout in range(0, LISTENING_TIMEOUT):
+                        if self.listening == False:
+                            break
+                        sleep(1)
+                elif e.errno == errno.EINVAL:
+                    print "Closing server, time to sleep"
+                    self.listening = False
+                else:
+                    print "Unknown socket error: %s" % e
+                    self.listening = False
+
+    def stop(self):
+        try:
+            self.s.shutdown(socket.SHUT_RDWR)
+        except:
+            # happend with there is already a listener
+            self.listening = False
