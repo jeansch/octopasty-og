@@ -25,6 +25,8 @@ from utils import deprotect, tmp_debug
 
 from asterisk import Login
 from asterisk import Event, Response
+from asterisk import STARTING_EVENTS_KEYWORDS
+from asterisk import STOPPING_EVENTS_KEYWORDS
 
 
 class AMIClient(Thread):
@@ -38,11 +40,13 @@ class AMIClient(Thread):
         self.user = parameters.get('user')
         self.password = parameters.get('password')
         self.connected = False
-        self.file = None
         self.response = None
         self.event = None
         self.logged = False
         self.locked = False
+        self.keep_flow = False
+        self.buffer = ''
+        self.lines = []
 
     def disconnect(self):
         if self.socket:
@@ -52,14 +56,15 @@ class AMIClient(Thread):
         if self.server in self.octopasty.amis:
             self.octopasty.amis.pop(self.server)
         self.connected = False
-        self.file = None
+        self.socket = None
 
     def send(self, packet):
         if not self.locked:
             tmp_debug("%s => %s" % (self.uid,
                                     deprotect(packet.packet)))
-            self.file.write(packet.packet)
-            self.file.flush()
+            self.socket.sendall(packet.packet)
+            if packet.packet.name.lower() in STARTING_EVENTS_KEYWORDS:
+                self.keep_flow = True
             self.locked = packet.locked
             return self.locked
         else:
@@ -77,55 +82,54 @@ class AMIClient(Thread):
             self.socket = s
             self.octopasty.amis.update({self.server: self})
             self.connected = True
-            self.file = self.socket.makefile(bufsize=42)
         except socket.error:
             pass
 
     def handle_line(self):
-        can_read = False
         if self.socket:
-            can_read = True
-            self.socket.setblocking(0)
-        while can_read and self.file:
-            try:
-                line = self.file.readline()
-                if len(line) == 0:
-                    self.disconnect()
+            self.buffer += self.socket.recv(4096)
+        in_lines = self.incoming.splut('\n')
+        if in_lines[-1] == '':
+            self.lines.extend(in_lines)
+            self.buffer = ''
+        else:
+            self.lines.extend(in_lines[:-1])
+            self.buffer = in_lines[-1]
+        for line in self.lines:
+            tmp_debug("%s <= %s" % (self.uid, deprotect(line)))
+            line = line.strip()
+            if line.startswith('Asterisk Call Manager'):
+                self.login()
+                return
+            if self.locked and line.lower().startswith('response:'):
+                self.response = \
+                          Response(line[line.find(':') + 1:].strip())
+                self.event = None
+            elif line.lower().startswith('event:'):
+                name = line[line.find(':') + 1:].strip()
+                if name.lower() in STOPPING_EVENTS_KEYWORDS:
+                    self.keep_flow = False
+                self.event = Event(name)
+                self.response = None
+            elif line == '':
+                if self.response:
+                    self.push(self.response)
+                    self.response = None
+                elif self.event:
+                    self.push(self.event)
+                    self.event = None
+            else:
+                if ':' in line:
+                    k = line.split(':')[0]
+                    v = ':'.join(line.split(':')[1:]).lstrip()
                 else:
-                    tmp_debug("%s <= %s" % (self.uid, deprotect(line)))
-                    line = line.strip()
-                    if line.startswith('Asterisk Call Manager'):
-                        self.login()
-                        return
-                    if self.locked and line.lower().startswith('response:'):
-                        self.response = \
-                                  Response(line[line.find(':') + 1:].strip())
-                        self.event = None
-                    elif line.lower().startswith('event:'):
-                        self.event = Event(line[line.find(':') + 1:].strip())
-                        self.response = None
-                    elif line == '':
-                        if self.response:
-                            self.push(self.response)
-                            self.response = None
-                        elif self.event:
-                            self.push(self.event)
-                            self.event = None
-                    else:
-                        if ':' in line:
-                            k = line.split(':')[0]
-                            v = ':'.join(line.split(':')[1:]).lstrip()
-                        else:
-                            k = line
-                            v = None
-                        if self.response:
-                            self.response.add_parameters({k: v})
-                        if self.event:
-                            self.event.add_parameters({k: v})
-            except socket.error:
-                can_read = False
-        if self.socket:
-            self.socket.setblocking(1)
+                    k = line
+                    v = None
+                if self.response:
+                    self.response.add_parameters({k: v})
+                if self.event:
+                    self.event.add_parameters({k: v})
+        self.lines = []
 
     def push(self, packet, emiter=None, dest=None, locked=0):
         p = dict(emiter=emiter or self.server,
@@ -133,7 +137,7 @@ class AMIClient(Thread):
                  packet=packet)
         if dest:
             p['dest'] = dest
-#        print "%s PUSH %s" % (self.server, p)
+        tmp_debug("%s >[] %s" % (self.uid, deprotect(p)))
         self.octopasty.in_queue.put(Packet(p))
 
     def _get_available(self):

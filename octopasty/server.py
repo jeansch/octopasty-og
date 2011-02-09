@@ -36,7 +36,7 @@ class ServerThread(Thread):
     def __init__(self, octopasty, channel, details):
         Thread.__init__(self)
         self.octopasty = octopasty
-        self.channel = channel
+        self.socket = channel
         self.details = details
         self.action = None
         self.logged = False
@@ -45,25 +45,24 @@ class ServerThread(Thread):
         self.wants_events = False
         self.binded_server = None
         self.keep_flow = False
+        self.buffer = ''
 
     def disconnect(self):
-        if self.channel:
+        if self.socket:
             try:
-                self.channel.shutdown(socket.SHUT_RDWR)
-                self.channel.close()
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
             except:
                 pass
-            self.channel = None
+            self.socket = None
         if self.id in self.octopasty.clients:
             self.octopasty.clients.pop(self.id)
         self.connected = False
-        self.file = None
+        self.socket = None
 
     def run(self):
-        self.file = self.channel.makefile()
         self.connected = True
-        self.file.write("Asterisk Call Manager/1.1\r\n")
-        self.file.flush()
+        self.socket.sendall("Asterisk Call Manager/1.1\r\n")
         self.octopasty.clients.update({self.id: self})
 
     def send(self, packet):
@@ -72,8 +71,11 @@ class ServerThread(Thread):
             if packet.locked == self.locked:
                 tmp_debug("%s => %s" % (self.uid,
                                         deprotect(packet.packet)))
-                self.file.write(packet.packet)
-                self.file.flush()
+                try:
+                    self.socket.sendall(packet.packet)
+                except:
+                    self.disconnect()
+                    return None
                 released_lock = self.locked
                 if not self.keep_flow:
                     self.locked = 0
@@ -85,46 +87,42 @@ class ServerThread(Thread):
             if not packet.locked:
                 tmp_debug("%s => %s" % (self.uid,
                                         deprotect(packet.packet)))
-                self.file.write(packet.packet)
-                self.file.flush()
+                self.socket.sendall(packet.packet)
             else:
                 # humm, why we get that ??
                 pass
         return released_lock
 
     def handle_line(self):
-        can_read = False
-        if self.channel:
-            can_read = True
-            self.channel.setblocking(0)
-        while can_read and self.file:
-            try:
-                line = self.file.readline()
-                if len(line) == 0:
-                    self.disconnect()
+        if self.socket:
+            self.buffer += self.socket.recv(4096)
+        in_lines = self.incoming.splut('\n')
+        if in_lines[-1] == '':
+            self.lines.extend(in_lines)
+            self.buffer = ''
+        else:
+            self.lines.extend(in_lines[:-1])
+            self.buffer = in_lines[-1]
+        for line in self.lines:
+            tmp_debug("%s <= %s" % (self.uid, deprotect(line)))
+            line = line.strip()
+            # if locked, we are waiting for a result
+            if not self.locked:
+                if line.lower().startswith('action:'):
+                    self.action = \
+                             Action(line[line.find(':') + 1:].strip())
+                elif line == '':
+                    if self.action:
+                        self.locked = bigtime()
+                        self.push(self.action)
+                        self.action = None
                 else:
-                    tmp_debug("%s <= %s" % (self.uid, deprotect(line)))
-                    line = line.strip()
-                    # if locked, we are waiting for a result
-                    if not self.locked:
-                        if line.lower().startswith('action:'):
-                            self.action = \
-                                     Action(line[line.find(':') + 1:].strip())
-                        elif line == '':
-                            if self.action:
-                                self.locked = bigtime()
-                                self.push(self.action)
-                                self.action = None
-                        else:
-                            if ':' in line:
-                                k = line.split(':')[0]
-                                v = line[line.find(':') + 1:].strip()
-                            if self.action:
-                                self.action.add_parameters({k: v})
-            except socket.error:
-                can_read = False
-        if self.channel:
-            self.channel.setblocking(1)
+                    if ':' in line:
+                        k = line.split(':')[0]
+                        v = line[line.find(':') + 1:].strip()
+                    if self.action:
+                        self.action.add_parameters({k: v})
+        self.lines = []
 
     def push(self, packet):
         if packet.name.lower() in STARTING_EVENTS_KEYWORDS:
@@ -169,7 +167,7 @@ class MainListener(Thread):
                     st.start()
             except socket.error, e:
                 if e.errno == errno.EADDRINUSE:
-                    print "Address already in use trying to bind on %s %s" % \
+                    print "Address already used trying to bind on %s %s" % \
                           (self.octopasty.config.get('bind_address'),
                            self.octopasty.config.get('bind_port'))
                     for timeout in range(0, LISTENING_TIMEOUT):

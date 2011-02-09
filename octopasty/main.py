@@ -67,10 +67,10 @@ class Octopasty(object):
                 filter(lambda _ami: _ami.connected, self.amis.values())]
     connected_servers = property(_get_connected_servers)
 
-    def _get_ami_files(self):
-        return [ami.file for ami in \
+    def _get_ami_sockets(self):
+        return [ami.socket for ami in \
                 filter(lambda _ami: _ami.connected, self.amis.values())]
-    ami_files = property(_get_ami_files)
+    ami_sockets = property(_get_ami_sockets)
 
     # Client side
     def listen_clients(self):
@@ -82,19 +82,19 @@ class Octopasty(object):
                        self.clients.values())]
     connected_clients = property(_get_connected_clients)
 
-    def _get_client_files(self):
-        return [client.file for client in \
+    def _get_client_sockets(self):
+        return [client.socket for client in \
                 filter(lambda _client: _client.connected,
                        self.clients.values())]
-    client_files = property(_get_client_files)
+    client_sockets = property(_get_client_sockets)
 
     def _get_peers(self):
         return list(self.clients.values()) + list(self.amis.values())
     peers = property(_get_peers)
 
-    def find_peer_from_file(self, file_):
+    def find_peer_from_socket(self, s):
         for peer in self.peers:
-            if peer.file == file_:
+            if peer.socket == s:
                 return peer
         return None
 

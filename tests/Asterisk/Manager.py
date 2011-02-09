@@ -342,6 +342,7 @@ class BaseManager(Asterisk.Logging.InstanceLogger):
                 self.log.debug('_read_packet() completed.')
                 return packet
 
+            print "LINE: %s" % line
             if line.count(':') == 1 and line[-1] == ':': # Empty field:
                 key, val = line[:-1], ''
             else:

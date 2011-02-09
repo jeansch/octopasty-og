@@ -21,17 +21,17 @@
 from select import select
 from internal import handle_action
 from asterisk import STOPPING_EVENTS_KEYWORDS
-from utils import tmp_debug
+from utils import tmp_debug, deprotect
 
 
 def readall(self):
-    reading = self.ami_files + self.client_files
+    reading = self.ami_sockets + self.client_sockets
     if len(reading) > 0:
         # it's a timeout, that means that 0 != None
         timeout = self.out_queue.empty() and 1 or 0
         to_read, _, _ = select(reading, [], [], timeout)
-        for f in to_read:
-            peer = self.find_peer_from_file(f)
+        for s in to_read:
+            peer = self.find_peer_from_socket(s)
             peer.handle_line()
 
 
@@ -40,24 +40,28 @@ def sendall(self):
         outgoing = list(self.out_queue.queue)
         self.out_queue.queue.clear()
         for packet in outgoing:
+            tmp_debug("%s <[] %s" % (packet.dest, deprotect(packet)))
             if packet.dest == '__internal__':
                 handle_action(self, packet)
             else:
                 dest = self.get_peer(packet.dest)
-                sent = dest.send(packet)
-                if sent:
-                    if sent in self.flow:
-                        keep_flow = dest.keep_flow
-                        if packet.name.lower() in STOPPING_EVENTS_KEYWORDS:
-                            keep_flow = False
-                            dest.keep_flow = False
-                            tmp_debug("%s ___ keep_flow = False" % dest.uid)
-                        # then it was an answer
-                        if not keep_flow:
-                            self.flow.pop("%s" % sent)
+                if dest:
+                    sent = dest.send(packet)
+                    if sent:
+                        if str(sent) in self.flow:
+                            keep_flow = dest.keep_flow
+                            if packet.packet.name.lower() in \
+                                   STOPPING_EVENTS_KEYWORDS:
+                                keep_flow = False
+                                dest.keep_flow = False
+                                tmp_debug("%s ___ keep_flow = False" % \
+                                          dest.uid)
+                            # then it was an answer
+                            if not keep_flow:
+                                self.flow.pop("%s" % sent)
+                        else:
+                            # then it was a query
+                            self.flow["%s" % sent] = packet.emiter
                     else:
-                        # then it was a query
-                        self.flow["%s" % sent] = packet.emiter
-                else:
-                    # Then it was an event
-                    pass
+                        # Then it was an event
+                        pass

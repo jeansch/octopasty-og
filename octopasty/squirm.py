@@ -46,10 +46,12 @@ def squirm(self):
             if packet.timestamp < apocalypse:
                 # not puting in the queue and just continuing
                 # makes the packet go nowhere
-                if packet.locked:
-                    dest = dest = self.flow.get("%s" % packet.locked)
-                    if dest != '__internal__':
-                        peer = self.get_peer(dest)
+                # TODO: figure what to do here, i was thinking about something
+                # if packet.locked:
+                #     dest = self.flow.get("%s" % packet.locked)
+                #     if dest != '__internal__':
+                #         peer = self.get_peer(dest)
+                pass
             if packet.emiter == '__internal__':
                 peer = self.get_peer(packet.dest)
                 if peer and peer.available:
@@ -60,7 +62,8 @@ def squirm(self):
                 if packet.locked:
                     if packet.emiter in self.connected_servers:
                         emiter = self.get_peer(packet.emiter)
-                        emiter.locked = 0
+                        if not emiter.keep_flow:
+                            emiter.locked = 0
                         dest = self.flow.get("%s" % packet.locked)
                         if dest:
                             if dest == '__internal__':
