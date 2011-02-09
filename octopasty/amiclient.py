@@ -89,7 +89,11 @@ class AMIClient(Thread):
 
     def handle_line(self):
         if self.socket:
-            bytes = self.socket.recv(4096)
+            bytes = ''
+            try:
+                bytes = self.socket.recv(4096)
+            except:
+                pass
             if len(bytes) == 0:
                 self.disconnect()
             self.buffer += bytes
