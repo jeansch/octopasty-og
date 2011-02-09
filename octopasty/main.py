@@ -118,12 +118,16 @@ class Octopasty(object):
                 burials(self)
                 sendall(self)
             except KeyboardInterrupt:
+                print "\n"
                 for ami in self.amis.values():
+                    print "Disconecting from %s" % ami.uid
                     ami.disconnect()
+                    ami.join()
                 for client in self.clients.values():
+                    print "Disconecting %s" % client.uid
                     client.disconnect()
-                print "Bye bye..."
+                    client.join()
                 looping = False
-        # TODO: find a way to stop the listener
-        # if self.listener:
-        #    self.listener.stop()
+        self.listener.stop()
+        self.listener.join()
+        print "Bye bye..."
