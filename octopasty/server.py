@@ -46,6 +46,7 @@ class ServerThread(Thread):
         self.binded_server = None
         self.keep_flow = False
         self.buffer = ''
+        self.lines = list()
 
     def disconnect(self):
         if self.socket:
@@ -54,7 +55,6 @@ class ServerThread(Thread):
                 self.socket.close()
             except:
                 pass
-            self.socket = None
         if self.id in self.octopasty.clients:
             self.octopasty.clients.pop(self.id)
         self.connected = False
@@ -69,10 +69,10 @@ class ServerThread(Thread):
         released_lock = None
         if self.locked:
             if packet.locked == self.locked:
-                tmp_debug("%s => %s" % (self.uid,
+                tmp_debug("IO", "O => %s: %s" % (self.uid,
                                         deprotect(packet.packet)))
                 try:
-                    self.socket.sendall(packet.packet)
+                    self.socket.sendall(str(packet.packet))
                 except:
                     self.disconnect()
                     return None
@@ -85,9 +85,9 @@ class ServerThread(Thread):
         else:
             # on let events go
             if not packet.locked:
-                tmp_debug("%s => %s" % (self.uid,
+                tmp_debug("IO", "O => %s %s" % (self.uid,
                                         deprotect(packet.packet)))
-                self.socket.sendall(packet.packet)
+                self.socket.sendall(str(packet.packet))
             else:
                 # humm, why we get that ??
                 pass
@@ -95,16 +95,15 @@ class ServerThread(Thread):
 
     def handle_line(self):
         if self.socket:
-            self.buffer += self.socket.recv(4096)
-        in_lines = self.incoming.splut('\n')
-        if in_lines[-1] == '':
-            self.lines.extend(in_lines)
-            self.buffer = ''
-        else:
-            self.lines.extend(in_lines[:-1])
-            self.buffer = in_lines[-1]
+            bytes = self.socket.recv(4096)
+            if len(bytes) == 0:
+                self.disconnect()
+            self.buffer += bytes
+        in_lines = self.buffer.split('\n')
+        self.lines.extend([l + '\n' for l in in_lines[:-1]])
+        self.buffer = in_lines[-1]
         for line in self.lines:
-            tmp_debug("%s <= %s" % (self.uid, deprotect(line)))
+            tmp_debug("IO", "%s => O: %s" % (self.uid, deprotect(line)))
             line = line.strip()
             # if locked, we are waiting for a result
             if not self.locked:
@@ -127,10 +126,9 @@ class ServerThread(Thread):
     def push(self, packet):
         if packet.name.lower() in STARTING_EVENTS_KEYWORDS:
             self.keep_flow = True
-            tmp_debug("%s ___ keep_flow = True" % self.uid)
         p = dict(emiter=self.id, locked=self.locked,
                  timestamp=time(), packet=packet)
-        tmp_debug("%s >[] %s" % (self.uid, deprotect(str(p))))
+        tmp_debug("PACKET", "%s >> %s" % (self.uid, deprotect(str(p))))
         self.octopasty.in_queue.put(Packet(p))
 
     def _get_available(self):

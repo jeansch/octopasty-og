@@ -49,6 +49,6 @@ def deprotect(s):
     return str(s).replace('\r', '\\r').replace('\n', '\\n')
 
 
-def tmp_debug(s):
+def tmp_debug(t, s):
     if 'OCTOPASTY_PRINT_IO' in os.environ:
-        print s
+        print "[% 8s] %s" % (t, s)

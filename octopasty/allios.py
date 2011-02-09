@@ -40,7 +40,7 @@ def sendall(self):
         outgoing = list(self.out_queue.queue)
         self.out_queue.queue.clear()
         for packet in outgoing:
-            tmp_debug("%s <[] %s" % (packet.dest, deprotect(packet)))
+            tmp_debug("PACKET", "%s << %s" % (packet.dest, deprotect(packet)))
             if packet.dest == '__internal__':
                 handle_action(self, packet)
             else:
@@ -54,8 +54,6 @@ def sendall(self):
                                    STOPPING_EVENTS_KEYWORDS:
                                 keep_flow = False
                                 dest.keep_flow = False
-                                tmp_debug("%s ___ keep_flow = False" % \
-                                          dest.uid)
                             # then it was an answer
                             if not keep_flow:
                                 self.flow.pop("%s" % sent)

@@ -50,9 +50,11 @@ class AMIClient(Thread):
 
     def disconnect(self):
         if self.socket:
-            self.socket.shutdown(socket.SHUT_RDWR)
-            self.socket.close()
-            self.socket = None
+            try:
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
+            except:
+                pass
         if self.server in self.octopasty.amis:
             self.octopasty.amis.pop(self.server)
         self.connected = False
@@ -60,9 +62,9 @@ class AMIClient(Thread):
 
     def send(self, packet):
         if not self.locked:
-            tmp_debug("%s => %s" % (self.uid,
+            tmp_debug("IO", "O => %s: %s" % (self.uid,
                                     deprotect(packet.packet)))
-            self.socket.sendall(packet.packet)
+            self.socket.sendall(str(packet.packet))
             if packet.packet.name.lower() in STARTING_EVENTS_KEYWORDS:
                 self.keep_flow = True
             self.locked = packet.locked
@@ -87,19 +89,19 @@ class AMIClient(Thread):
 
     def handle_line(self):
         if self.socket:
-            self.buffer += self.socket.recv(4096)
-        in_lines = self.incoming.splut('\n')
-        if in_lines[-1] == '':
-            self.lines.extend(in_lines)
-            self.buffer = ''
-        else:
-            self.lines.extend(in_lines[:-1])
-            self.buffer = in_lines[-1]
+            bytes = self.socket.recv(4096)
+            if len(bytes) == 0:
+                self.disconnect()
+            self.buffer += bytes
+        in_lines = self.buffer.split('\n')
+        self.lines.extend([l + '\n' for l in in_lines[:-1]])
+        self.buffer = in_lines[-1]
         for line in self.lines:
-            tmp_debug("%s <= %s" % (self.uid, deprotect(line)))
+            tmp_debug("IO", "%s => O: %s" % (self.uid, deprotect(line)))
             line = line.strip()
             if line.startswith('Asterisk Call Manager'):
                 self.login()
+                self.lines = []
                 return
             if self.locked and line.lower().startswith('response:'):
                 self.response = \
@@ -137,7 +139,7 @@ class AMIClient(Thread):
                  packet=packet)
         if dest:
             p['dest'] = dest
-        tmp_debug("%s >[] %s" % (self.uid, deprotect(p)))
+        tmp_debug("PACKET", "%s >> %s" % (self.uid, deprotect(p)))
         self.octopasty.in_queue.put(Packet(p))
 
     def _get_available(self):

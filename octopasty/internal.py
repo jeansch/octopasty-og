@@ -29,7 +29,7 @@ def handle_action(self, packet):
     action = packet.packet
     if action.name.lower() == 'error':
         # needs to handle errors, may be a timeout before next try
-        pass
+        login_failed_on_ami(self, packet.emiter)
 
     if action.name.lower() == 'success':
         logged_on_ami(self, packet.emiter)
@@ -79,6 +79,11 @@ def auth_user(self, emiter, locked, username, secret, wants_events):
             client.disconnect()
 
 
+def login_failed_on_ami(self, _ami):
+    print "Login failed on '%s'" % _ami
+
+
 def logged_on_ami(self, _ami):
+    print "Logged on '%s'" % _ami
     ami = self.amis.get(_ami)
     ami.logged = True
