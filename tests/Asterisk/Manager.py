@@ -294,6 +294,7 @@ class BaseManager(Asterisk.Logging.InstanceLogger):
 
         while True:
             line = self.file.readline().rstrip()
+#	    print "RESPONSE: %s" % line
             self.log.io('_read_response_follows: recv %r', line)
             line_nr += 1
 
@@ -342,33 +343,38 @@ class BaseManager(Asterisk.Logging.InstanceLogger):
                 self.log.debug('_read_packet() completed.')
                 return packet
 
-            print "LINE: %s" % line
-            if line.count(':') == 1 and line[-1] == ':': # Empty field:
-                key, val = line[:-1], ''
-            else:
-                key, val = line.split(': ', 1)
+#            print "LINE: %s" % line
+            if ':' in line:
+                if line.count(':') == 1 and line[-1] == ':': # Empty field:
+                    key, val = line[:-1], ''
+                else:
+                    key, val = line.split(': ', 1)
 
-            if key == 'Response' and val == 'Follows':
-                return self._read_response_follows()
+                if key == 'Response' and val == 'Follows':
+                    return self._read_response_follows()
 
-            packet[key] = val
+                packet[key] = val
 
 
     def _dispatch_packet(self, packet):
         'Feed a single packet to an event handler.'
-
         if 'Response' in packet:
             self.log.debug('_dispatch_packet() placed response in buffer.')
             self.response_buffer.append(packet)
-
-        elif 'Event' in packet:
+            return
+        if 'Event' in packet:
             self._translate_event(packet)
             self.log.debug('_dispatch_packet() passing event to on_Event.')
             self.on_Event(packet)
-
-        else:
-            raise InternalError('Unknown packet type detected: %r' % (packet,))
-
+            return
+        if 'UserEvent' in packet:
+            packet['Event'] = 'UserEvent'
+            open('/tmp/userevent.txt','a').write("%s" % packet)
+            self._translate_event(packet)
+            self.log.debug('_dispatch_packet() passing event to on_Event.')
+            self.on_Event(packet)
+            return
+        raise InternalError('Unknown packet type detected: %r' % (packet,))
 
     def _translate_response(self, packet, success = None):
         '''
@@ -772,11 +778,11 @@ class CoreActions(object):
             entry = self.strip_evinfo(event)
             queues[entry.pop('Queue')]['entries'][event.pop('Channel')] = entry
 
-        def QueueStatusEnd(self, event):
+        def QueueStatusComplete(self, event):
             stop_flag[0] = True
 
         events = Asterisk.Util.EventCollection([
-            QueueParams, QueueMember, QueueEntry, QueueStatusEnd])
+            QueueParams, QueueMember, QueueEntry, QueueStatusComplete])
         self.events += events
 
         try:
