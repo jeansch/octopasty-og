@@ -51,7 +51,6 @@ def deprotect(s):
 
 def tmp_debug(t, s):
     debug = os.environ.get('OCTOPASTY_DEBUG')
-    if debug:
-        debug = debug.split(',')
+    debug = debug and debug.split(',') or []
     if t in debug:
         print "[% 8s] %s" % (t, s)
