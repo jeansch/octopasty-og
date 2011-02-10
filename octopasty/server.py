@@ -159,9 +159,9 @@ class MainListener(Thread):
                 self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.s.bind((self.octopasty.config.get('bind_address'),
                              int(self.octopasty.config.get('bind_port'))))
-                print "Listening on %s %s" % \
-                      (self.octopasty.config.get('bind_address'),
-                       self.octopasty.config.get('bind_port'))
+                tmp_debug("NETWORK", "Listening on %s %s" % \
+                          (self.octopasty.config.get('bind_address'),
+                           self.octopasty.config.get('bind_port')))
                 self.s.listen(5)
                 while self.listening:
                     channel, details = self.s.accept()
@@ -169,18 +169,20 @@ class MainListener(Thread):
                     st.start()
             except socket.error, e:
                 if e.errno == errno.EADDRINUSE:
-                    print "Address already used trying to bind on %s %s" % \
-                          (self.octopasty.config.get('bind_address'),
-                           self.octopasty.config.get('bind_port'))
+                    tmp_debug(
+                        "NETWORK",
+                        "Address already used trying to bind on %s %s" % \
+                        (self.octopasty.config.get('bind_address'),
+                         self.octopasty.config.get('bind_port')))
                     for timeout in range(0, LISTENING_TIMEOUT):
                         if self.listening == False:
                             break
                         sleep(1)
                 elif e.errno == errno.EINVAL:
-                    print "Closing server, time to sleep"
+                    tmp_debug("NETWORK", "Closing server, time to sleep")
                     self.listening = False
                 else:
-                    print "Unknown socket error: %s" % e
+                    tmp_debug("NETWORK", "Unknown socket error: %s" % e)
                     self.listening = False
 
     def stop(self):

@@ -20,7 +20,7 @@
 from hashlib import sha1
 from time import time
 
-from utils import Packet, bigtime
+from utils import Packet, bigtime, tmp_debug
 from asterisk import Success, Error
 
 
@@ -67,6 +67,7 @@ def auth_user(self, emiter, locked, username, secret, wants_events):
                      timestamp=time(),
                      packet=response,
                      dest=client.id)
+            tmp_debug("AUTH", "'%s' logged successfully" % username)
             self.out_queue.put(Packet(p))
         else:
             response = Error(parameters=dict(Message='Authentication failed'))
@@ -76,14 +77,15 @@ def auth_user(self, emiter, locked, username, secret, wants_events):
                      packet=response,
                      dest=client.id)
             client.send(Packet(p))
+            tmp_debug("AUTH", "'%s' failed to login" % username)
             client.disconnect()
 
 
 def login_failed_on_ami(self, _ami):
-    print "Login failed on '%s'" % _ami
+    tmp_debug("AUTH", "Login failed on '%s'" % _ami)
 
 
 def logged_on_ami(self, _ami):
-    print "Logged on '%s'" % _ami
+    tmp_debug("AUTH", "Logged on '%s'" % _ami)
     ami = self.amis.get(_ami)
     ami.logged = True

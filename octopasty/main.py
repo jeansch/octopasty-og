@@ -27,6 +27,7 @@ from server import MainListener
 from squirm import squirm, burials
 from allios import readall, sendall
 from config import read_config
+from utils import tmp_debug
 
 _1S = timedelta(0, 1)
 _10S = timedelta(0, 10)
@@ -118,16 +119,14 @@ class Octopasty(object):
                 burials(self)
                 sendall(self)
             except KeyboardInterrupt:
-                print "\n"
                 for ami in self.amis.values():
-                    print "Disconecting from %s" % ami.uid
+                    tmp_debug("NETWORK", "Disconecting from %s" % ami.uid)
                     ami.disconnect()
                     ami.join()
                 for client in self.clients.values():
-                    print "Disconecting %s" % client.uid
+                    tmp_debug("NETWORK", "Disconecting %s" % client.uid)
                     client.disconnect()
                     client.join()
                 looping = False
         self.listener.stop()
         self.listener.join()
-        print "Bye bye..."
