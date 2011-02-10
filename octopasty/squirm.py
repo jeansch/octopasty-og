@@ -64,6 +64,8 @@ def squirm(self):
             else:
                 if packet.locked:
                     if packet.emiter in self.connected_servers:
+                        tmp_debug("SQUIRM", "Emiter is server %s" % \
+                                  packet.emiter)
                         emiter = self.get_peer(packet.emiter)
                         if emiter.locked and not emiter.keep_flow:
                             emiter.locked = 0
@@ -75,21 +77,29 @@ def squirm(self):
                                 handle_action(self, packet)
                             else:
                                 peer = self.get_peer(dest)
-                                if peer and peer.locked == packet.locked \
-                                       and peer.logged:
-                                    packet.dest = dest
-                                    self.out_queue.put(packet)
+                                if peer and peer.logged:
+                                    if peer.locked:
+                                        if peer.locked == packet.locked:
+                                            packet.dest = dest
+                                            self.out_queue.put(packet)
+                                        else:
+                                            tmp_debug("SQUIRM",
+                                                      "Requeueing packet " \
+                                                      "from server: %s" % \
+                                                      deprotect(packet))
+                                            self.in_queue.put(packet)
                                 else:
-                                    # if peer still here, requeue
-                                    if peer and peer.logged:
-                                        tmp_debug("SQUIRM",
-                                                  "Requeueing packet %s" % \
-                                                  deprotect(packet))
-                                        self.in_queue.put(packet)
+                                    # just forgot it, and stop flow if any
+                                    if emiter.keep_flow:
+                                        emiter.keep_flow = 0
+                                        emiter.locked = 0
                         else:
-                            # no dest
-                            pass
+                            if emiter.keep_flow:
+                                emiter.keep_flow = 0
+                                emiter.locked = 0
                     if packet.emiter in self.connected_clients:
+                        tmp_debug("SQUIRM", "Emiter is client %s" % \
+                                  packet.emiter)
                         client = self.get_peer(packet.emiter)
                         if client.logged:
                             cid = client.id.split('_')[0]
@@ -100,10 +110,23 @@ def squirm(self):
                                     peer = self.get_peer(cs)
                                     if peer and peer.logged:
                                         if peer.available:
+                                            # server seems already available
+                                            # but may be busy just after,
+                                            # then we need to verify that
+                                            # in outgoing packets too
                                             packet.dest = cs
                                             self.out_queue.put(packet)
+                                            tmp_debug("SQUIRM",
+                                                      "Packet from client " \
+                                                      "pushed to queue %s" % \
+                                                      deprotect(packet))
                                         else:
+                                            # server seems busy
                                             self.in_queue.put(packet)
+                                            tmp_debug("SQUIRM",
+                                                      "Requeueing packet from "
+                                                      " client: %s" % \
+                                                      deprotect(packet))
                                     else:
                                         response = Error(
                                             parameters=dict(
