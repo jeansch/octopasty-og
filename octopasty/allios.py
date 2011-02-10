@@ -28,7 +28,7 @@ def readall(self):
     reading = self.ami_sockets + self.client_sockets
     if len(reading) > 0:
         # it's a timeout, that means that 0 != None
-        timeout = self.out_queue.empty() and 1 or 0
+        timeout = self.out_queue.empty() and 0.1 or 0
         to_read, _, _ = select(reading, [], [], timeout)
         for s in to_read:
             peer = self.find_peer_from_socket(s)
@@ -54,6 +54,7 @@ def sendall(self):
                                    STOPPING_EVENTS_KEYWORDS:
                                 keep_flow = False
                                 dest.keep_flow = False
+                                dest.locked = 0
                             # then it was an answer
                             if not keep_flow:
                                 self.flow.pop("%s" % sent)

@@ -22,17 +22,18 @@ from utils import bigtime
 from time import time
 from copy import copy
 
-from utils import Packet
+from utils import Packet, tmp_debug, deprotect
 from asterisk import Error
 from internal import handle_action
 
 
 def burials(self):
     apocalypse = bigtime(-10)
-    # Remove old locks
     for peer in self.peers:
-        if peer and peer.logged and peer.locked < apocalypse:
+        if peer and peer.locked and peer.logged and peer.locked < apocalypse:
             peer.locked = 0
+            tmp_debug("SQUIRM", "Removing the very old lock of  %s" % \
+                      peer.uid)
 
 
 # The nervous central
@@ -43,6 +44,7 @@ def squirm(self):
         incoming = list(self.in_queue.queue)
         self.in_queue.queue.clear()
         for packet in incoming:
+            tmp_debug("SQUIRM", "Processing packet %s" % deprotect(packet))
             if packet.timestamp < apocalypse:
                 # not puting in the queue and just continuing
                 # makes the packet go nowhere
@@ -51,7 +53,8 @@ def squirm(self):
                 #     dest = self.flow.get("%s" % packet.locked)
                 #     if dest != '__internal__':
                 #         peer = self.get_peer(dest)
-                pass
+                tmp_debug("SQUIRM", "Removing very old packet: %s" % packet)
+                continue
             if packet.emiter == '__internal__':
                 peer = self.get_peer(packet.dest)
                 if peer and peer.available:
@@ -62,8 +65,10 @@ def squirm(self):
                 if packet.locked:
                     if packet.emiter in self.connected_servers:
                         emiter = self.get_peer(packet.emiter)
-                        if not emiter.keep_flow:
+                        if emiter.locked and not emiter.keep_flow:
                             emiter.locked = 0
+                            tmp_debug("SQUIRM", "Unlocking emiter %s" % \
+                                      emiter.uid)
                         dest = self.flow.get("%s" % packet.locked)
                         if dest:
                             if dest == '__internal__':
@@ -75,7 +80,12 @@ def squirm(self):
                                     packet.dest = dest
                                     self.out_queue.put(packet)
                                 else:
-                                    self.in_queue.put(packet)
+                                    # if peer still here, requeue
+                                    if peer and peer.logged:
+                                        tmp_debug("SQUIRM",
+                                                  "Requeueing packet %s" % \
+                                                  deprotect(packet))
+                                        self.in_queue.put(packet)
                         else:
                             # no dest
                             pass

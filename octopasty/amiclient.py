@@ -62,8 +62,10 @@ class AMIClient(Thread):
 
     def send(self, packet):
         if not self.locked:
-            tmp_debug("IO", "O => %s: %s" % (self.uid,
-                                    deprotect(packet.packet)))
+            tmp_debug("IO", "O => %s: L: %s D: %s" % (
+                self.uid,
+                packet.locked,
+                deprotect(packet.packet)))
             self.socket.sendall(str(packet.packet))
             if packet.packet.name.lower() in STARTING_EVENTS_KEYWORDS:
                 self.keep_flow = True
@@ -101,7 +103,8 @@ class AMIClient(Thread):
         self.lines.extend([l + '\n' for l in in_lines[:-1]])
         self.buffer = in_lines[-1]
         for line in self.lines:
-            tmp_debug("IO", "%s => O: %s" % (self.uid, deprotect(line)))
+            tmp_debug("IO", "%s => O: L: %s D: %s" % (
+                self.uid, self.locked, deprotect(line)))
             line = line.strip()
             if line.startswith('Asterisk Call Manager'):
                 self.login()
@@ -126,8 +129,9 @@ class AMIClient(Thread):
                     self.event = None
             else:
                 if ':' in line:
-                    k = line.split(':')[0]
-                    v = ':'.join(line.split(':')[1:]).lstrip()
+                    sc = line.find(':')
+                    k = line[:sc].strip()
+                    v = line[sc + 1:].strip()
                 else:
                     k = line
                     v = None
