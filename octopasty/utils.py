@@ -19,6 +19,7 @@
 
 import os
 from time import time
+from datetime import datetime
 
 
 class NiceDict(object):
@@ -53,4 +54,4 @@ def tmp_debug(t, s):
     debug = os.environ.get('OCTOPASTY_DEBUG')
     debug = debug and debug.split(',') or []
     if t in debug:
-        print "[% 8s] %s" % (t, s)
+        print "@%s [% 8s] %s" % (datetime.now(), t, s)

@@ -46,6 +46,19 @@ def sendall(self):
             else:
                 dest = self.get_peer(packet.dest)
                 if dest:
+                    # here is another place to check
+                    # and requeue if necessary
+                    if packet.locked != dest.locked and \
+                       not dest.available:
+                        self.out_queue.put(packet)
+                        tmp_debug("SQUIRM", "Requeueing on output: %s" % \
+                                  deprotect(packet))
+                        continue
+                    if not packet.locked and not dest.available:
+                        self.out_queue.put(packet)
+                        tmp_debug("SQUIRM", "Requeueing on output: %s" % \
+                                  deprotect(packet))
+                        continue
                     sent = dest.send(packet)
                     if sent:
                         if str(sent) in self.flow:
