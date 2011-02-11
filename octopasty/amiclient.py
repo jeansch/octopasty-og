@@ -69,6 +69,8 @@ class AMIClient(Thread):
             self.socket.sendall(str(packet.packet))
             if packet.packet.name.lower() in STARTING_EVENTS_KEYWORDS:
                 self.keep_flow = True
+                tmp_debug("PACKET", "%s Starting flow (L:%s)" % (self.uid,
+                                                                 self.locked))
             self.locked = packet.locked
             return self.locked
         else:
@@ -116,8 +118,6 @@ class AMIClient(Thread):
                 self.event = None
             elif line.lower().startswith('event:'):
                 name = line[line.find(':') + 1:].strip()
-                if name.lower() in STOPPING_EVENTS_KEYWORDS:
-                    self.keep_flow = False
                 self.event = Event(name)
                 self.response = None
             elif line == '':
@@ -155,6 +155,10 @@ class AMIClient(Thread):
                                                         self.keep_flow,
                                                         deprotect(p)))
         self.octopasty.in_queue.put(Packet(p))
+        if packet.name.lower() in STOPPING_EVENTS_KEYWORDS:
+            self.keep_flow = False
+        tmp_debug("PACKET", "%s Stopping flow (L:%s)" % (self.uid,
+                                                         self.locked))
 
     def _get_available(self):
         return self.connected and not self.locked
