@@ -125,7 +125,10 @@ class AMIClient(Thread):
                     self.push(self.response)
                     self.response = None
                 elif self.event:
-                    self.push(self.event)
+                    if self.keep_flow:
+                        self.push(self.event)
+                    else:
+                        self.push(self.event, locked=0)
                     self.event = None
             else:
                 if ':' in line:
@@ -141,13 +144,16 @@ class AMIClient(Thread):
                     self.event.add_parameters({k: v})
         self.lines = []
 
-    def push(self, packet, emiter=None, dest=None, locked=0):
+    def push(self, packet, emiter=None, dest=None, locked=-1):
         p = dict(emiter=emiter or self.server,
-                 locked=locked or self.locked, timestamp=time(),
+                 locked=locked == -1 and self.locked or locked,
+                 timestamp=time(),
                  packet=packet)
         if dest:
             p['dest'] = dest
-        tmp_debug("PACKET", "%s >> %s" % (self.uid, deprotect(p)))
+        tmp_debug("PACKET", "%s (L:%s, KF:%s) >> %s" % (self.uid, self.locked,
+                                                        self.keep_flow,
+                                                        deprotect(p)))
         self.octopasty.in_queue.put(Packet(p))
 
     def _get_available(self):

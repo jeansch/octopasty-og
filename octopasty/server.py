@@ -132,7 +132,9 @@ class ServerThread(Thread):
             self.keep_flow = True
         p = dict(emiter=self.id, locked=self.locked,
                  timestamp=time(), packet=packet)
-        tmp_debug("PACKET", "%s >> %s" % (self.uid, deprotect(str(p))))
+        tmp_debug("PACKET", "%s (L:%s, KF:%s) >> %s" % (self.uid, self.locked,
+                                                        self.keep_flow,
+                                                        deprotect(str(p))))
         self.octopasty.in_queue.put(Packet(p))
 
     def _get_available(self):
