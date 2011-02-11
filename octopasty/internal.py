@@ -21,7 +21,9 @@ from hashlib import sha1
 from time import time
 
 from utils import Packet, bigtime, tmp_debug
-from asterisk import Success, Error
+from asterisk import Success, Error, Goodbye
+
+KEEP_INTERNAL = ['logoff']
 
 
 def handle_action(self, packet):
@@ -45,6 +47,9 @@ def handle_action(self, packet):
                   login.get('secret'),
                   login.get('events') and \
                   login.get('events').lower() == 'on' or False)
+
+    if action.name.lower() == 'logoff':
+        logoff_user(self, packet)
 
 
 def auth_user(self, emiter, locked, username, secret, wants_events):
@@ -79,6 +84,19 @@ def auth_user(self, emiter, locked, username, secret, wants_events):
             client.send(Packet(p))
             tmp_debug("AUTH", "'%s' failed to login" % username)
             client.disconnect()
+
+
+def logoff_user(self, packet):
+    client = self.clients.get(packet.emiter)
+    response = Goodbye(parameters=dict(Message="Don't panic."))
+    p = dict(emiter='__internal__',
+             locked=packet.locked,
+             timestamp=time(),
+             packet=response,
+             dest=client.id)
+    client.send(Packet(p))
+    tmp_debug("AUTH", "'%s' logout" % packet.emiter[:packet.emiter.find('_')])
+    client.disconnect()
 
 
 def login_failed_on_ami(self, _ami):

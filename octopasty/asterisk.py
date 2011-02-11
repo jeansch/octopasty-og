@@ -80,3 +80,7 @@ class Success(Response):
 
 class Error(Response):
     _name_ = 'Error'
+
+
+class Goodbye(Response):
+    _name_ = 'Goodbye'

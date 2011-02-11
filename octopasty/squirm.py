@@ -24,7 +24,7 @@ from copy import copy
 
 from utils import Packet, tmp_debug, deprotect
 from asterisk import Error
-from internal import handle_action
+from internal import handle_action, KEEP_INTERNAL
 
 
 def burials(self):
@@ -100,6 +100,9 @@ def squirm(self):
                     if packet.emiter in self.connected_clients:
                         tmp_debug("SQUIRM", "Emiter is client %s" % \
                                   packet.emiter)
+                        if packet.packet.name in KEEP_INTERNAL:
+                            handle_action(self, packet)
+                            continue
                         client = self.get_peer(packet.emiter)
                         if client.logged:
                             cid = client.id.split('_')[0]
