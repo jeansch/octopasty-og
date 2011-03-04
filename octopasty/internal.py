@@ -45,8 +45,8 @@ def handle_action(self, packet):
             login[k.lower()] = v
         auth_user(self, packet.emiter, packet.locked, login.get('username'),
                   login.get('secret'),
-                  login.get('events') and \
-                  login.get('events').lower() != 'off' or False)
+                  (login.get('events') and \
+                  login.get('events').lower() == 'off') and False or True)
 
     if action.name.lower() == 'logoff':
         logoff_user(self, packet)
