@@ -17,8 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from hashlib import sha1
+from hashlib import sha1, md5
 from time import time
+from random import randint
 
 from utils import Packet, bigtime, tmp_debug
 from asterisk import Success, Error, Goodbye
@@ -35,6 +36,14 @@ def handle_action(self, packet):
 
     if action.name.lower() == 'success':
         logged_on_ami(self, packet.emiter)
+
+    if action.name.lower() == 'challenge':
+        k = filter(lambda k: k.lower() == 'authtype',
+                   action.parameters.keys())
+        k = k and k[0] or None
+        if k:
+            challenge(self, packet.emiter, packet.locked,
+                      action.parameters.get(k).lower())
 
     if action.name.lower() == 'login':
         login = dict()
@@ -54,16 +63,30 @@ def handle_action(self, packet):
 
 def auth_user(self, emiter, locked, username, secret, wants_events):
     if username in self.config.get('users'):
+        login_sucessfull = False
         hashed = self.config.get('users').get(username).get('password')
         client = self.clients.get(emiter)
-        if sha1(secret).hexdigest() == hashed:
+        if client.authtype is None:
+            if sha1(secret).hexdigest() == hashed:
+                login_sucessfull = True
+        elif client.authtype[0] == 'md5':
+            key = client.authtype[1]
+            _md5 = md5(key)
+            _md5.update(self.config.get('users').get(username).get('password'))
+            if secret == _md5.hexdigest():
+                login_sucessfull = True
+        if login_sucessfull:
             old_id = client.id
             client.id = '%s_%d' % (username, bigtime())
             self.clients.pop(old_id)
             self.clients.update({client.id: client})
             client.logged = True
-            server = self.config.get('users').get(username).get('server')
-            client.binded_server = server
+            _servers = self.config.get('users').get(username).get('servers')
+            _servers = [s.strip() for s in _servers.split(',')]
+            if len(_servers) == 1:
+                client.binded_server = _servers[0]
+            else:
+                client.multiple_servers = _servers
             client.wants_events = wants_events
             response = Success(parameters=dict(
                 Message='Authentication accepted'))
@@ -107,3 +130,23 @@ def logged_on_ami(self, _ami):
     tmp_debug("AUTH", "Logged on '%s'" % _ami)
     ami = self.amis.get(_ami)
     ami.logged = True
+
+
+def challenge(self, emiter, locked, authtype):
+    if authtype == 'md5':
+        key = str(randint(100000000, 999999999))
+        response = Success(parameters=dict(
+            Challenge='%s' % key))
+        tmp_debug("AUTH", "'%s' asked for '%s' challenge, sent '%s'" % \
+                  (emiter, authtype, key))
+    else:
+        response = Error(parameters=dict(
+            Message='Authentication type not supported'))
+    client = self.clients.get(emiter)
+    p = dict(emiter='__internal__',
+             locked=locked,
+             timestamp=time(),
+             packet=response,
+             dest=client.id)
+    client.send(Packet(p))
+    client.authtype = (authtype, key)

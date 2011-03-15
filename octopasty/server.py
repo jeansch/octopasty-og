@@ -40,6 +40,8 @@ class ServerThread(Thread):
         self.details = details
         self.action = None
         self.logged = False
+        self.authtype = None
+        self.multiple_servers = list()
         self.id = 'unknown_%d' % bigtime()
         self.locked = 0
         self.wants_events = False

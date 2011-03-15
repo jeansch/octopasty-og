@@ -54,10 +54,10 @@ def get_users(config):
     assert len(users) > 0, "No AMIs configured"
     for key, parameters in users:
         parameters = parameters.replace(' ', '')
-        password, server = parameters.split('@')
+        password, servers = parameters.split('@')
         user = key
         ret['users'][user] = dict(password=password,
-                                  server=server)
+                                  servers=servers)
     return ret
 
 

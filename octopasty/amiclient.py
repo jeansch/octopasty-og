@@ -43,6 +43,7 @@ class AMIClient(Thread):
         self.response = None
         self.event = None
         self.logged = False
+        self.authtype = None
         self.locked = False
         self.keep_flow = False
         self.buffer = ''

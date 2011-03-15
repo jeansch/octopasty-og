@@ -108,7 +108,7 @@ def squirm(self):
                             cid = client.id.split('_')[0]
                             cu = self.config['users'].get(cid)
                             if cu:
-                                cs = cu.get('server')
+                                cs = client.binded_server
                                 if cs:
                                     peer = self.get_peer(cs)
                                     if peer and peer.logged:
@@ -140,6 +140,18 @@ def squirm(self):
                                                  packet=response,
                                                  dest=client.id)
                                         self.out_queue.put(Packet(p))
+                                else:
+                                    if len(client.multiple_servers):
+                                        response = Error(
+                                            parameters=dict(
+                                                Message='Cannot send command '
+                                                'to multiple servers'))
+                                        p = dict(emiter='__internal__',
+                                                 locked=packet.locked,
+                                                 timestamp=time(),
+                                                 packet=response,
+                                                 dest=client.id)
+                                        self.out_queue.put(Packet(p))
                         else:
                             packet.dest = '__internal__'
                             self.out_queue.put(packet)
@@ -151,7 +163,8 @@ def squirm(self):
                         if ami.logged:
                             for client in self.connected_clients:
                                 peer = self.get_peer(client)
-                                if peer.binded_server == packet.emiter and \
+                                if peer.binded_server == packet.emiter or \
+                                   packet.emiter in peer.multiple_servers and \
                                    peer.wants_events:
                                     p = copy(packet)
                                     p.dest = client
