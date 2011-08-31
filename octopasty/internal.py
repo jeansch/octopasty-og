@@ -63,9 +63,9 @@ def handle_action(self, packet):
 
 def auth_user(self, emiter, locked, username, secret, wants_events):
     login_sucessfull = False
+    client = self.clients.get(emiter)
     if username in self.config.get('users'):
         hashed = self.config.get('users').get(username).get('password')
-        client = self.clients.get(emiter)
         if client.authtype is None:
             if sha1(secret).hexdigest() == hashed:
                 login_sucessfull = True
