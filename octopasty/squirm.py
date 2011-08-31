@@ -100,7 +100,7 @@ def squirm(self):
                     if packet.emiter in self.connected_clients:
                         tmp_debug("SQUIRM", "Emiter is client %s" % \
                                   packet.emiter)
-                        if packet.packet.name in KEEP_INTERNAL:
+                        if packet.packet.name.lower() in KEEP_INTERNAL:
                             handle_action(self, packet)
                             continue
                         client = self.get_peer(packet.emiter)
