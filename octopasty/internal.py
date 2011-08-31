@@ -62,8 +62,8 @@ def handle_action(self, packet):
 
 
 def auth_user(self, emiter, locked, username, secret, wants_events):
+    login_sucessfull = False
     if username in self.config.get('users'):
-        login_sucessfull = False
         hashed = self.config.get('users').get(username).get('password')
         client = self.clients.get(emiter)
         if client.authtype is None:
@@ -75,38 +75,38 @@ def auth_user(self, emiter, locked, username, secret, wants_events):
             _md5.update(self.config.get('users').get(username).get('password'))
             if secret == _md5.hexdigest():
                 login_sucessfull = True
-        if login_sucessfull:
-            old_id = client.id
-            client.id = '%s_%d' % (username, bigtime())
-            self.clients.pop(old_id)
-            self.clients.update({client.id: client})
-            client.logged = True
-            _servers = self.config.get('users').get(username).get('servers')
-            _servers = [s.strip() for s in _servers.split(',')]
-            if len(_servers) == 1:
-                client.binded_server = _servers[0]
-            else:
-                client.multiple_servers = _servers
-            client.wants_events = wants_events
-            response = Success(parameters=dict(
-                Message='Authentication accepted'))
-            p = dict(emiter='__internal__',
-                     locked=locked,
-                     timestamp=time(),
-                     packet=response,
-                     dest=client.id)
-            tmp_debug("AUTH", "'%s' logged successfully" % username)
-            self.out_queue.put(Packet(p))
+    if login_sucessfull:
+        old_id = client.id
+        client.id = '%s_%d' % (username, bigtime())
+        self.clients.pop(old_id)
+        self.clients.update({client.id: client})
+        client.logged = True
+        _servers = self.config.get('users').get(username).get('servers')
+        _servers = [s.strip() for s in _servers.split(',')]
+        if len(_servers) == 1:
+            client.binded_server = _servers[0]
         else:
-            response = Error(parameters=dict(Message='Authentication failed'))
-            p = dict(emiter='__internal__',
-                     locked=locked,
-                     timestamp=time(),
-                     packet=response,
-                     dest=client.id)
-            client.send(Packet(p))
-            tmp_debug("AUTH", "'%s' failed to login" % username)
-            client.disconnect()
+            client.multiple_servers = _servers
+        client.wants_events = wants_events
+        response = Success(parameters=dict(
+            Message='Authentication accepted'))
+        p = dict(emiter='__internal__',
+                 locked=locked,
+                 timestamp=time(),
+                 packet=response,
+                 dest=client.id)
+        tmp_debug("AUTH", "'%s' logged successfully" % username)
+        self.out_queue.put(Packet(p))
+    else:
+        response = Error(parameters=dict(Message='Authentication failed'))
+        p = dict(emiter='__internal__',
+                 locked=locked,
+                 timestamp=time(),
+                 packet=response,
+                 dest=client.id)
+        client.send(Packet(p))
+        tmp_debug("AUTH", "'%s' failed to login" % username)
+        client.disconnect()
 
 
 def logoff_user(self, packet):
