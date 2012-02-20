@@ -47,13 +47,13 @@ def handle_action(self, packet):
 
     if action.name.lower() == 'login':
         login = dict()
-        for k in ['Username', 'Secret', 'Events']:
+        for k in ['Username', 'Secret', 'Events', 'Key']:
             v = action.parameters.get(k) or \
                 action.parameters.get(k.lower()) or \
                 action.parameters.get(k.upper())
             login[k.lower()] = v
         auth_user(self, packet.emiter, packet.locked, login.get('username'),
-                  login.get('secret'),
+                  login.get('secret') or login.get('key'),
                   (login.get('events') and \
                   login.get('events').lower() == 'off') and False or True)
 
