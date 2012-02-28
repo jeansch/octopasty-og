@@ -89,7 +89,10 @@ class ServerThread(Thread):
             if not packet.locked:
                 tmp_debug("IO", "O => %s %s" % (self.uid,
                                         deprotect(packet.packet)))
-                self.socket.sendall(str(packet.packet))
+                try:
+                    self.socket.sendall(str(packet.packet))
+                except:
+                    self.disconnect()
             else:
                 # humm, why we get that ??
                 pass
