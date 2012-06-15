@@ -156,8 +156,6 @@ class MainListener(Thread):
     def __init__(self, octopasty):
         Thread.__init__(self)
         self.octopasty = octopasty
-        self.octopasty.listener = self
-        self.start()
 
     def run(self):
         self.listening = True

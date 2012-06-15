@@ -76,6 +76,7 @@ class Octopasty(object):
     # Client side
     def listen_clients(self):
         self.listener = MainListener(self)
+        self.listener.start()
 
     def _get_connected_clients(self):
         return [client.id for client in \
